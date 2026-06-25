@@ -95,19 +95,23 @@ def build_database():
             current_hash = match.group(1)
             break
             
-    # Check if DB already exists and has the same hash
+    # Check if DB already exists and has the same hash AND FTS5 tables
     if current_hash and os.path.exists(DB_PATH):
         try:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             existing_hash = cursor.execute("SELECT identity_hash FROM room_master_table LIMIT 1").fetchone()[0]
+            # FTS5 表存在性检查 — Room hash 不跟踪 FTS5 虚拟表
+            fts_exists = cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='words_fts'").fetchone()
             conn.close()
-            if existing_hash == current_hash:
+            if existing_hash == current_hash and fts_exists:
                 print(f"[INFO] Database is up-to-date (hash: {current_hash}). Skipping compilation.")
                 print("==================================================")
-                print("数据库结构未改变，已跳过编译，节省时间！")
+                print("数据库结构未改变且 FTS5 索引已存在，已跳过编译，节省时间！")
                 print("==================================================")
                 return
+            elif existing_hash == current_hash and not fts_exists:
+                print("[INFO] Room schema unchanged but FTS5 tables missing. Rebuilding FTS5 index...")
         except Exception:
             pass
 
@@ -220,6 +224,10 @@ def build_database():
     # Initialize DB schemas extracted from Room
     for stmt in statements:
         cursor.execute(stmt)
+        
+    # Create FTS5 virtual tables for high-performance fuzzy and full-text search
+    cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS `words_fts` USING fts5(lemma, lemma_stressed, content='words', content_rowid='id');")
+    cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS `definitions_fts` USING fts5(definition, content='definitions', content_rowid='id');")
     conn.commit()
     
     words_count = 0
@@ -266,6 +274,9 @@ def build_database():
         if words_count % 10000 == 0:
             print(f"Inserted {words_count} words into DB...", end="\r")
             
+    print("\nStep 5: Populating FTS5 virtual tables...")
+    cursor.execute("INSERT INTO words_fts(rowid, lemma, lemma_stressed) SELECT id, lemma, lemma_stressed FROM words;")
+    cursor.execute("INSERT INTO definitions_fts(rowid, definition) SELECT id, definition FROM definitions;")
     conn.commit()
     conn.close()
     
