@@ -10,33 +10,32 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
+import androidx.compose.ui.graphics.Color
+
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = AppleBlue,
+    secondary = AppleGray,
+    background = SystemBackgroundDark,
+    surface = SystemSurfaceDark,
+    onPrimary = Color.White,
+    onBackground = TextPrimaryDark,
+    onSurface = TextPrimaryDark
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = AppleBlue,
+    secondary = AppleGray,
+    background = SystemBackgroundLight,
+    surface = SystemSurfaceLight,
     onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    onBackground = TextPrimaryLight,
+    onSurface = TextPrimaryLight
 )
 
 @Composable
 fun ParusTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // 禁用动态提取壁纸颜色，强制使用苹果灰黑设计
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
