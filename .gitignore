@@ -13,3 +13,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# 词典数据库（140MB，由 build_bkrs_db.py / build_kaikki_db.py 生成，不入 git）
+*.db
+*.db-journal
+
+# IDE
+.idea/vcs.xml
