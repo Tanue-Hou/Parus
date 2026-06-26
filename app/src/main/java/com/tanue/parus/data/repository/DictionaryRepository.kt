@@ -20,8 +20,15 @@ class DictionaryRepository(private val wordDao: WordDao) {
                 val queryMatch = "$queryClean*"
                 wordDao.searchRussianWords(queryClean, queryPrefix, queryMatch)
             } else {
+                // 中文搜索：LIKE 全量匹配 + GLOB 拼音识别排序
+                // pattern1a: 释义以 "1) 水 [pinyin]" 开头（第一个义项+拼音）
+                // pattern1b: 释义以 "水 [pinyin]" 开头（无编号前缀+拼音）
+                // pinyinGlob: 任意位置出现 "水 [pinyin]"
+                val queryLike = "%$queryClean%"
+                val pattern1a = "1) $queryClean [a-z]*"
+                val pattern1b = "$queryClean [a-z]*"
                 val pinyinGlob = "*$queryClean [a-z]*"
-                wordDao.searchChineseWords(queryClean, pinyinGlob)
+                wordDao.searchChineseWords(queryClean, queryLike, pattern1a, pattern1b, pinyinGlob)
             }
         } catch (e: Exception) {
             // FTS5 失败时降级到 LIKE 搜索
