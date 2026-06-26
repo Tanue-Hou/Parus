@@ -22,7 +22,7 @@ class SearchViewModel(private val repository: DictionaryRepository) : ViewModel(
         @OptIn(FlowPreview::class)
         viewModelScope.launch {
             _searchQuery
-                .debounce(200) // 200毫秒防抖，防止输入抖动
+                .debounce(200)
                 .distinctUntilChanged()
                 .flatMapLatest { query ->
                     if (query.isBlank()) {
@@ -33,6 +33,7 @@ class SearchViewModel(private val repository: DictionaryRepository) : ViewModel(
                             try {
                                 emit(repository.search(query))
                             } catch (e: Exception) {
+                                android.util.Log.e("ParusSearch", "搜索失败: query='$query'", e)
                                 emit(emptyList())
                             } finally {
                                 _isLoading.value = false

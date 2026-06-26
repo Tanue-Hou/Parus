@@ -1,5 +1,6 @@
 package com.tanue.parus.data.repository
 
+import android.util.Log
 import com.tanue.parus.data.database.WordDao
 import com.tanue.parus.data.model.WordWithDetails
 import kotlinx.coroutines.Dispatchers
@@ -10,19 +11,31 @@ class DictionaryRepository(private val wordDao: WordDao) {
         val queryClean = query.trim().lowercase()
         if (queryClean.isEmpty()) return@withContext emptyList()
 
-        // 检测输入是俄语（含西里尔字母）还是中文
         val isRussian = queryClean.any { it in '\u0400'..'\u04FF' }
 
-        if (isRussian) {
-            // 俄语路径：FTS5 前缀匹配 + 变格搜索
-            val queryPrefix = "$queryClean*"
-            val queryMatch = "$queryClean*"
-            wordDao.searchRussianWords(queryClean, queryPrefix, queryMatch)
-        } else {
-            // 中文路径：FTS5 精确匹配 + BKRS 释义相关性排序
-            // GLOB 模式匹配搜索词后跟拼音注音（核心词义信号）
-            val pinyinGlob = "*$queryClean [a-z]*"
-            wordDao.searchChineseWords(queryClean, pinyinGlob)
+        try {
+            // 优先使用 FTS5 高速搜索
+            if (isRussian) {
+                val queryPrefix = "$queryClean*"
+                val queryMatch = "$queryClean*"
+                wordDao.searchRussianWords(queryClean, queryPrefix, queryMatch)
+            } else {
+                val pinyinGlob = "*$queryClean [a-z]*"
+                wordDao.searchChineseWords(queryClean, pinyinGlob)
+            }
+        } catch (e: Exception) {
+            // FTS5 失败时降级到 LIKE 搜索
+            Log.e("ParusSearch", "FTS5 搜索失败，降级到 LIKE: ${e.message}", e)
+            try {
+                if (isRussian) {
+                    wordDao.searchFallbackRussian(queryClean, "$queryClean%")
+                } else {
+                    wordDao.searchFallbackChinese("%$queryClean%")
+                }
+            } catch (e2: Exception) {
+                Log.e("ParusSearch", "降级搜索也失败: ${e2.message}", e2)
+                emptyList()
+            }
         }
     }
 }

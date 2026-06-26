@@ -10,7 +10,6 @@ import com.tanue.parus.data.model.WordWithDetails
 interface WordDao {
 
     // 俄语搜索路径：FTS5 前缀匹配 + 变格精确匹配
-    // 排序：精确匹配 > 前缀匹配 > 变格匹配 > 其他
     @Transaction
     @SkipQueryVerification
     @Query("""
@@ -32,8 +31,6 @@ interface WordDao {
     fun searchRussianWords(queryClean: String, queryPrefix: String, queryMatch: String): List<WordWithDetails>
 
     // 中文搜索路径：FTS5 精确匹配 + BKRS 释义相关性排序
-    // 利用 BKRS 释义格式特征：核心词义后跟拼音注音（如 "水 shuǐ"）
-    // GLOB '*词 [a-z]*' 匹配搜索词 + 空格 + 拉丁字母 = 核心词义信号
     @Transaction
     @SkipQueryVerification
     @Query("""
@@ -53,4 +50,33 @@ interface WordDao {
         LIMIT 50
     """)
     fun searchChineseWords(queryClean: String, pinyinGlob: String): List<WordWithDetails>
+
+    // 降级方案：LIKE 搜索（FTS5 不可用时使用）
+    @Transaction
+    @Query("""
+        SELECT w.* FROM words w
+        WHERE w.lemma = :queryClean
+           OR w.lemma LIKE :queryLike
+           OR w.id IN (SELECT word_id FROM inflections WHERE form = :queryClean)
+        ORDER BY
+            CASE
+                WHEN w.lemma = :queryClean THEN 1
+                WHEN w.lemma LIKE :queryLike THEN 2
+                ELSE 3
+            END ASC,
+            length(w.lemma) ASC
+        LIMIT 50
+    """)
+    fun searchFallbackRussian(queryClean: String, queryLike: String): List<WordWithDetails>
+
+    @Transaction
+    @Query("""
+        SELECT w.* FROM words w
+        WHERE w.id IN (
+            SELECT word_id FROM definitions WHERE definition LIKE :queryLike
+        )
+        ORDER BY length(w.lemma) ASC
+        LIMIT 50
+    """)
+    fun searchFallbackChinese(queryLike: String): List<WordWithDetails>
 }
