@@ -18,6 +18,27 @@ val appModule = module {
         )
         .createFromAsset("database/dict.db")
         .fallbackToDestructiveMigration()
+        .addCallback(object : androidx.room.RoomDatabase.Callback() {
+            override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                super.onOpen(db)
+                // 确保 FTS5 虚拟表存在（旧版 dict.db 缓存可能没有）
+                db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS `words_fts` USING fts5(lemma, lemma_stressed, content='words', content_rowid='id')")
+                db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS `definitions_fts` USING fts5(definition, content='definitions', content_rowid='id')")
+                // 如果 FTS5 表为空，从主表填充数据
+                val wordsCount = db.query("SELECT COUNT(*) FROM words_fts").use {
+                    it.moveToFirst(); it.getInt(0)
+                }
+                if (wordsCount == 0) {
+                    db.execSQL("INSERT INTO words_fts(rowid, lemma, lemma_stressed) SELECT id, lemma, lemma_stressed FROM words")
+                }
+                val defsCount = db.query("SELECT COUNT(*) FROM definitions_fts").use {
+                    it.moveToFirst(); it.getInt(0)
+                }
+                if (defsCount == 0) {
+                    db.execSQL("INSERT INTO definitions_fts(rowid, definition) SELECT id, definition FROM definitions")
+                }
+            }
+        })
         .build()
     }
     
