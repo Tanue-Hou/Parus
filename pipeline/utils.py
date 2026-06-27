@@ -186,13 +186,40 @@ def pymorphy_pos_to_en(pymorphy_pos):
 
 
 def guess_pos_from_suffix(lemma):
-    """后缀启发式判断词性"""
+    """后缀启发式判断词性
+
+    注意：-ние/-ие 既可能是名词(существование)也可能是形容词复数(синие)，
+    但词典中形容词 lemma 通常是 -ый/-ий/-ой 形式，所以 -ние/-ие 视为名词。
+    同理 -ство/-ость/-ота 是典型名词后缀，需在 -о/-е 的 adv 判断之前检查。
+    """
+    # 动词
     if lemma.endswith('ть') or lemma.endswith('ти') or lemma.endswith('чь'):
         return 'verb'
     if lemma.endswith('ся') or lemma.endswith('сь'):
         return 'verb'
+
+    # 名词后缀（必须在 adj/adv 之前检查，避免 -ство 被误判为 adv）
+    noun_suffixes = [
+        'ство', 'ость', 'ота',     # 抽象名词
+        'ение', 'ание', 'ние', 'тие',  # 动名词
+        'ость', 'изация', 'ация', 'яция', 'ификация',  # 名词化后缀
+        'изм', 'ист',              # 主义/人
+        'ник', 'тель', 'чик', 'щик',  # 人/器物
+        'ик', 'ек', 'ок',          # 指小
+        'ина',                     # 集合/大
+        'ка', 'ня',                # 女性/场所
+        'ло',                      # 工具
+    ]
+    for suf in noun_suffixes:
+        if lemma.endswith(suf):
+            return 'noun'
+
+    # 形容词
     if any(lemma.endswith(x) for x in ['ый', 'ой', 'ий', 'ая', 'яя', 'ое', 'ее', 'ые', 'ие']):
         return 'adj'
+
+    # 副词
     if lemma.endswith('о') or lemma.endswith('е') or lemma.endswith('ски'):
         return 'adv'
+
     return 'noun'

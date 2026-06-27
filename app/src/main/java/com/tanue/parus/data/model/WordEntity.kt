@@ -13,5 +13,7 @@ data class WordEntity(
     @PrimaryKey @ColumnInfo(name = "id") val id: Int = 0,
     @ColumnInfo(name = "lemma") val lemma: String,
     @ColumnInfo(name = "lemma_stressed") val lemmaStressed: String,
-    @ColumnInfo(name = "pos") val pos: String?
+    @ColumnInfo(name = "pos") val pos: String?,
+    @ColumnInfo(name = "frequency") val frequency: Int? = null,
+    @ColumnInfo(name = "conjugation_type") val conjugationType: Int? = null
 )

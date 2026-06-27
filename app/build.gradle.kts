@@ -76,9 +76,9 @@ tasks.register<Exec>("runDbCompiler") {
     val osName = System.getProperty("os.name").lowercase()
     val isWindows = osName.contains("win")
     if (isWindows) {
-        commandLine("cmd", "/c", "py", "${project.rootDir}/build_bkrs_db.py")
+        commandLine("cmd", "/c", "py", "${project.rootDir}/pipeline/phase3_build_db.py")
     } else {
-        commandLine("python3", "${project.rootDir}/build_bkrs_db.py")
+        commandLine("python3", "${project.rootDir}/pipeline/phase3_build_db.py")
     }
     workingDir = project.rootDir
 }

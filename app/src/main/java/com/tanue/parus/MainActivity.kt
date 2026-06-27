@@ -28,11 +28,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import com.tanue.parus.ui.theme.ParusTheme
 import com.tanue.parus.ui.theme.AppleBlue
 import com.tanue.parus.ui.theme.AppleGray
 import com.tanue.parus.data.model.WordWithDetails
 import com.tanue.parus.data.model.InflectionEntity
+import com.tanue.parus.data.model.ExampleEntity
 import com.tanue.parus.presentation.search.SearchViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -70,102 +77,119 @@ fun SpotlightSearchScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     var selectedWord by remember { mutableStateOf<WordWithDetails?>(null) }
 
-    if (selectedWord != null) {
-        BackHandler {
-            selectedWord = null
-        }
-        WordDetailScreen(
-            wordWithDetails = selectedWord!!,
-            onBackClick = { selectedWord = null },
-            modifier = Modifier.fillMaxSize()
-        )
-    } else {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // 苹果 Spotlight 风格的搜索框
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { 
-                    viewModel.onQueryChanged(it)
-                },
-                placeholder = { 
-                    Text(
-                        text = "搜索俄语单词、变格或中文释义...", 
-                        color = AppleGray,
-                        fontSize = 15.sp
-                    ) 
-                },
-                leadingIcon = { 
-                    Icon(
-                        imageVector = Icons.Default.Search, 
-                        contentDescription = "Search",
-                        tint = AppleGray
-                    ) 
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.onQueryChanged("") }) {
-                            Icon(
-                                imageVector = Icons.Default.Clear,
-                                contentDescription = "Clear",
-                                tint = AppleGray
-                            )
-                        }
-                    }
-                },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                    focusedBorderColor = AppleBlue.copy(alpha = 0.8f),
-                    unfocusedBorderColor = Color.Gray.copy(alpha = 0.2f),
-                    cursorColor = AppleBlue
-                ),
-                shape = RoundedCornerShape(24.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
+    AnimatedContent(
+        targetState = selectedWord,
+        transitionSpec = {
+            if (targetState != null) {
+                // 进入二级页面：从右侧滑入，主页向左侧滑出
+                (slideInHorizontally { width -> width } + fadeIn())
+                    .togetherWith(slideOutHorizontally { width -> -width } + fadeOut())
+            } else {
+                // 返回主页：主页从左侧滑入，二级页面向右侧滑出
+                (slideInHorizontally { width -> -width } + fadeIn())
+                    .togetherWith(slideOutHorizontally { width -> width } + fadeOut())
+            }
+        },
+        label = "page_transition",
+        modifier = modifier.fillMaxSize()
+    ) { word ->
+        if (word != null) {
+            BackHandler {
+                selectedWord = null
+            }
+            WordDetailScreen(
+                wordWithDetails = word,
+                onBackClick = { selectedWord = null },
+                modifier = Modifier.fillMaxSize()
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 结果渲染区域
-            Box(
+        } else {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (isLoading) {
-                    // 正在加载状态
-                    CircularProgressIndicator(
-                        color = AppleBlue,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                } else if (searchQuery.isBlank()) {
-                    // 空白欢迎状态
-                    WelcomeView()
-                } else if (searchResults.isEmpty()) {
-                    // 未找到状态
-                    NoResultsView(searchQuery)
-                } else {
-                    // 搜索结果列表
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(searchResults, key = { it.word.id }) { wordWithDetails ->
-                            WordItemRow(
-                                wordWithDetails = wordWithDetails,
-                                onClick = {
-                                    selectedWord = wordWithDetails
-                                }
-                            )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // 苹果 Spotlight 风格的搜索框
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { 
+                        viewModel.onQueryChanged(it)
+                    },
+                    placeholder = { 
+                        Text(
+                            text = "搜索俄语单词、变格或中文释义...", 
+                            color = AppleGray,
+                            fontSize = 15.sp
+                        ) 
+                    },
+                    leadingIcon = { 
+                        Icon(
+                            imageVector = Icons.Default.Search, 
+                            contentDescription = "Search",
+                            tint = AppleGray
+                        ) 
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.onQueryChanged("") }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear",
+                                    tint = AppleGray
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                        focusedBorderColor = AppleBlue.copy(alpha = 0.8f),
+                        unfocusedBorderColor = Color.Gray.copy(alpha = 0.2f),
+                        cursorColor = AppleBlue
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 结果渲染区域
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    if (isLoading) {
+                        // 正在加载状态
+                        CircularProgressIndicator(
+                            color = AppleBlue,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    } else if (searchQuery.isBlank()) {
+                        // 空白欢迎状态
+                        WelcomeView()
+                    } else if (searchResults.isEmpty()) {
+                        // 未找到状态
+                        NoResultsView(searchQuery)
+                    } else {
+                        // 搜索结果列表
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(searchResults, key = { it.word.id }) { wordWithDetails ->
+                                WordItemRow(
+                                    wordWithDetails = wordWithDetails,
+                                    onClick = {
+                                        selectedWord = wordWithDetails
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -308,168 +332,281 @@ fun WordDetailScreen(
     val word = wordWithDetails.word
     val definitions = wordWithDetails.definitions
     val inflections = wordWithDetails.inflections
+    val examples = wordWithDetails.examples
     val scrollState = rememberScrollState()
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(16.dp)
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        // 返回导航栏
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        // 1. 可滚动的主体内容
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp)
-                .clickable { onBackClick() }
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Back",
-                tint = AppleBlue,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "返回词典",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = AppleBlue
-            )
-        }
+            // 留出顶部固定返回栏的高度 (56.dp + 状态栏边距)
+            Spacer(modifier = Modifier.height(100.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 单词头部及词性
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = word.lemmaStressed,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            word.pos?.let { pos ->
-                Spacer(modifier = Modifier.width(12.dp))
+            // 单词头部及词性
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
-                    text = pos,
-                    fontSize = 12.sp,
-                    color = AppleBlue,
+                    text = word.lemmaStressed,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .background(AppleBlue.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                    color = MaterialTheme.colorScheme.onBackground
                 )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // 详细解释卡片
-        Text(
-            text = "解释释义",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = AppleGray,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                if (definitions.isEmpty()) {
+                word.pos?.let { pos ->
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "暂无释义",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        text = pos,
+                        fontSize = 12.sp,
+                        color = AppleBlue,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .background(AppleBlue.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
-                } else {
-                    definitions.forEachIndexed { index, df ->
-                        if (index > 0) {
-                            HorizontalDivider(
-                                color = Color.Gray.copy(alpha = 0.1f),
-                                modifier = Modifier.padding(vertical = 12.dp)
-                            )
-                        }
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = df.source,
-                                    fontSize = 11.sp,
-                                    color = AppleBlue,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier
-                                        .background(AppleBlue.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // 详细解释卡片
+            Text(
+                text = "解释释义",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppleGray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    if (definitions.isEmpty()) {
+                        Text(
+                            text = "暂无释义",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    } else {
+                        definitions.forEachIndexed { index, df ->
+                            if (index > 0) {
+                                HorizontalDivider(
+                                    color = Color.Gray.copy(alpha = 0.1f),
+                                    modifier = Modifier.padding(vertical = 12.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = df.definition,
-                                fontSize = 15.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                lineHeight = 22.sp
-                            )
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = df.source,
+                                        fontSize = 11.sp,
+                                        color = AppleBlue,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier
+                                            .background(AppleBlue.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                // 解析释义文本，• 开头的行作为例句
+                                val defLines = df.definition.split("\n")
+                                defLines.forEach { defLine ->
+                                    val trimmed = defLine.trim()
+                                    if (trimmed.startsWith("•") || trimmed.startsWith("→")) {
+                                        // 例句行 — 灰色小字
+                                        val exampleText = trimmed.removePrefix("•").removePrefix("→").trim()
+                                        if (exampleText.isNotEmpty()) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = exampleText,
+                                                fontSize = 13.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                                lineHeight = 18.sp
+                                            )
+                                        }
+                                    } else {
+                                        if (trimmed.isNotEmpty()) {
+                                            Text(
+                                                text = trimmed,
+                                                fontSize = 15.sp,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                lineHeight = 22.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 形态变化格表卡片
+            Text(
+                text = "形态变化 (变格/变位)",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppleGray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    if (inflections.isEmpty()) {
+                        Text(
+                            text = "该词无格位变化",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    } else {
+                        val posLower = word.pos?.lowercase() ?: ""
+                        when {
+                            posLower.contains("noun") || posLower.contains("сущ") -> {
+                                NounDeclensionTable(inflections = inflections)
+                            }
+                            posLower.contains("adj") || posLower.contains("прил") -> {
+                                AdjDeclensionTable(inflections = inflections)
+                            }
+                            posLower.contains("verb") || posLower.contains("глаг") -> {
+                                VerbConjugationTable(inflections = inflections)
+                            }
+                            else -> {
+                                GeneralInflectionsList(inflections = inflections)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 例句卡片
+            if (examples.isNotEmpty()) {
+                Text(
+                    text = "例句",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppleGray,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        examples.forEachIndexed { index, ex ->
+                            if (index > 0) {
+                                HorizontalDivider(
+                                    color = Color.Gray.copy(alpha = 0.1f),
+                                    modifier = Modifier.padding(vertical = 12.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = ex.sentenceRu,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    lineHeight = 20.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = ex.sentenceZh,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                    lineHeight = 18.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = ex.source,
+                                    fontSize = 10.sp,
+                                    color = AppleGray
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(30.dp))
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 形态变化格表卡片
-        Text(
-            text = "形态变化 (变格/变位)",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = AppleGray,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            modifier = Modifier.fillMaxWidth()
+        // 2. 悬浮液态玻璃拟物风格返回栏 (Sticky Frosted Glass Top Bar)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .background(
+                    color = MaterialTheme.colorScheme.background.copy(alpha = 0.8f) // 半透明底色
+                )
+                .border(
+                    width = 0.5.dp,
+                    color = Color.Gray.copy(alpha = 0.1f) // 底边细边框，模拟玻璃边缘反射
+                )
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                if (inflections.isEmpty()) {
-                    Text(
-                        text = "该词无格位变化",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .statusBarsPadding() // 避开系统状态栏，解决“太靠上”问题
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = 16.dp)
+            ) {
+                // 液态玻璃拟物胶囊返回按钮
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .background(
+                            color = Color.Gray.copy(alpha = 0.08f), // 玻璃磨砂底色
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.15f), // 高光描边
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .clickable { onBackClick() }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = AppleBlue,
+                        modifier = Modifier.size(18.dp)
                     )
-                } else {
-                    val posLower = word.pos?.lowercase() ?: ""
-                    when {
-                        posLower.contains("noun") || posLower.contains("сущ") -> {
-                            NounDeclensionTable(inflections = inflections)
-                        }
-                        posLower.contains("adj") || posLower.contains("прил") -> {
-                            AdjDeclensionTable(inflections = inflections)
-                        }
-                        posLower.contains("verb") || posLower.contains("глаг") -> {
-                            VerbConjugationTable(inflections = inflections)
-                        }
-                        else -> {
-                            GeneralInflectionsList(inflections = inflections)
-                        }
-                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "返回",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = AppleBlue
+                    )
                 }
             }
         }
-        
-        Spacer(modifier = Modifier.height(30.dp))
     }
 }
 
@@ -500,12 +637,12 @@ fun RowScope.TableCell(
 @Composable
 fun NounDeclensionTable(inflections: List<InflectionEntity>) {
     val cases = listOf(
-        Triple("主格 (Им.)", "nominative", "nom"),
-        Triple("生格 (Род.)", "genitive", "gen"),
-        Triple("与格 (Дат.)", "dative", "dat"),
-        Triple("宾格 (Вин.)", "accusative", "acc"),
-        Triple("工格 (Твор.)", "instrumental", "ins"),
-        Triple("前置格 (Предл.)", "prepositional", "pre")
+        Triple("主格 (Им.)", "nom", "sg"),
+        Triple("生格 (Род.)", "gen", "sg"),
+        Triple("与格 (Дат.)", "dat", "sg"),
+        Triple("宾格 (Вин.)", "acc", "sg"),
+        Triple("工格 (Твор.)", "ins", "sg"),
+        Triple("前置格 (Предл.)", "prep", "sg")
     )
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -516,8 +653,8 @@ fun NounDeclensionTable(inflections: List<InflectionEntity>) {
         }
 
         cases.forEach { (caseName, caseTag, _) ->
-            val sgForm = findNounForm(inflections, caseTag, "singular")
-            val plForm = findNounForm(inflections, caseTag, "plural")
+            val sgForm = findNounForm(inflections, caseTag, "sg")
+            val plForm = findNounForm(inflections, caseTag, "pl")
             Row(modifier = Modifier.fillMaxWidth()) {
                 TableCell(text = caseName, weight = 0.3f, isHeader = true)
                 TableCell(text = sgForm, weight = 0.35f)
@@ -530,12 +667,12 @@ fun NounDeclensionTable(inflections: List<InflectionEntity>) {
 @Composable
 fun AdjDeclensionTable(inflections: List<InflectionEntity>) {
     val cases = listOf(
-        Triple("主格 (Им.)", "nominative", "nom"),
-        Triple("生格 (Род.)", "genitive", "gen"),
-        Triple("与格 (Дат.)", "dative", "dat"),
-        Triple("宾格 (Вин.)", "accusative", "acc"),
-        Triple("工格 (Твор.)", "instrumental", "ins"),
-        Triple("前置格 (Предл.)", "prepositional", "pre")
+        Triple("主格 (Им.)", "nom", "sg"),
+        Triple("生格 (Род.)", "gen", "sg"),
+        Triple("与格 (Дат.)", "dat", "sg"),
+        Triple("宾格 (Вин.)", "acc", "sg"),
+        Triple("工格 (Твор.)", "ins", "sg"),
+        Triple("前置格 (Предл.)", "prep", "sg")
     )
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -548,10 +685,10 @@ fun AdjDeclensionTable(inflections: List<InflectionEntity>) {
         }
 
         cases.forEach { (caseName, caseTag, _) ->
-            val mascForm = findAdjForm(inflections, caseTag, "masculine")
-            val femForm = findAdjForm(inflections, caseTag, "feminine")
-            val neutForm = findAdjForm(inflections, caseTag, "neuter")
-            val plForm = findAdjForm(inflections, caseTag, "plural")
+            val mascForm = findAdjForm(inflections, caseTag, "m")
+            val femForm = findAdjForm(inflections, caseTag, "f")
+            val neutForm = findAdjForm(inflections, caseTag, "n")
+            val plForm = findAdjForm(inflections, caseTag, "pl")
             Row(modifier = Modifier.fillMaxWidth()) {
                 TableCell(text = caseName, weight = 0.2f, isHeader = true)
                 TableCell(text = mascForm, weight = 0.2f)
@@ -581,14 +718,14 @@ fun VerbConjugationTable(inflections: List<InflectionEntity>) {
         }
         
         val persons = listOf(
-            Triple("第一人称 (Я / Мы)", "first-person", "1st"),
-            Triple("第二人称 (Ты / Вы)", "second-person", "2nd"),
-            Triple("第三人称 (Он / Они)", "third-person", "3rd")
+            Triple("第一人称 (Я / Мы)", "1", "sg"),
+            Triple("第二人称 (Ты / Вы)", "2", "sg"),
+            Triple("第三人称 (Он / Они)", "3", "sg")
         )
         
         persons.forEach { (personName, personTag, _) ->
-            val sgForm = findVerbPresFutForm(inflections, personTag, "singular")
-            val plForm = findVerbPresFutForm(inflections, personTag, "plural")
+            val sgForm = findVerbPresFutForm(inflections, personTag, "sg")
+            val plForm = findVerbPresFutForm(inflections, personTag, "pl")
             Row(modifier = Modifier.fillMaxWidth()) {
                 TableCell(text = personName, weight = 0.35f, isHeader = true)
                 TableCell(text = sgForm, weight = 0.325f)
@@ -613,10 +750,10 @@ fun VerbConjugationTable(inflections: List<InflectionEntity>) {
             TableCell(text = "复数 (Plur.)", weight = 0.25f, isHeader = true)
         }
         
-        val pastMasc = findVerbPastForm(inflections, "masculine")
-        val pastFem = findVerbPastForm(inflections, "feminine")
-        val pastNeut = findVerbPastForm(inflections, "neuter")
-        val pastPl = findVerbPastForm(inflections, "plural")
+        val pastMasc = findVerbPastForm(inflections, "m")
+        val pastFem = findVerbPastForm(inflections, "f")
+        val pastNeut = findVerbPastForm(inflections, "n")
+        val pastPl = findVerbPastForm(inflections, "pl")
         Row(modifier = Modifier.fillMaxWidth()) {
             TableCell(text = pastMasc, weight = 0.25f)
             TableCell(text = pastFem, weight = 0.25f)
@@ -639,8 +776,8 @@ fun VerbConjugationTable(inflections: List<InflectionEntity>) {
             TableCell(text = "复数 (вы)", weight = 0.5f, isHeader = true)
         }
         
-        val impSg = findVerbImperativeForm(inflections, "singular")
-        val impPl = findVerbImperativeForm(inflections, "plural")
+        val impSg = findVerbImperativeForm(inflections, "sg")
+        val impPl = findVerbImperativeForm(inflections, "pl")
         Row(modifier = Modifier.fillMaxWidth()) {
             TableCell(text = impSg, weight = 0.5f)
             TableCell(text = impPl, weight = 0.5f)
@@ -685,81 +822,67 @@ fun GeneralInflectionsList(inflections: List<InflectionEntity>) {
     }
 }
 
-private fun findNounForm(inflections: List<InflectionEntity>, case: String, number: String): String {
+// 名词变格：搜 nom_sg, gen_sg, dat_sg, acc_sg, ins_sg, prep_sg, nom_pl, gen_pl, dat_pl, acc_pl, ins_pl, prep_pl
+private fun findNounForm(inflections: List<InflectionEntity>, caseTag: String, number: String): String {
+    val fullTag = "${caseTag}_${number}"  // e.g. "nom_sg"
     val matches = inflections.filter {
         val tag = it.grammarTag?.lowercase() ?: ""
-        tag.contains(case) && tag.contains(number)
-    }
-    if (matches.isNotEmpty()) {
-        return matches.map { it.form }.distinct().joinToString(", ")
-    }
-    
-    if (number == "singular") {
-        val singularMatches = inflections.filter {
-            val tag = it.grammarTag?.lowercase() ?: ""
-            tag.contains(case) && !tag.contains("plural")
-        }
-        if (singularMatches.isNotEmpty()) {
-            return singularMatches.map { it.form }.distinct().joinToString(", ")
-        }
-    }
-    
-    return "-"
-}
-
-private fun findAdjForm(inflections: List<InflectionEntity>, case: String, genderOrPlural: String): String {
-    val matches = inflections.filter {
-        val tag = it.grammarTag?.lowercase() ?: ""
-        tag.contains(case) && tag.contains(genderOrPlural)
-    }
-    if (matches.isNotEmpty()) {
-        return matches.map { it.form }.distinct().joinToString(", ")
-    }
-    
-    if (genderOrPlural == "masculine") {
-        val mascMatches = inflections.filter {
-            val tag = it.grammarTag?.lowercase() ?: ""
-            tag.contains(case) && !tag.contains("feminine") && !tag.contains("neuter") && !tag.contains("plural")
-        }
-        if (mascMatches.isNotEmpty()) {
-            return mascMatches.map { it.form }.distinct().joinToString(", ")
-        }
-    }
-    return "-"
-}
-
-private fun findVerbPresFutForm(inflections: List<InflectionEntity>, person: String, number: String): String {
-    val matches = inflections.filter {
-        val tag = it.grammarTag?.lowercase() ?: ""
-        tag.contains(person) && tag.contains(number) && !tag.contains("past") && !tag.contains("imperative")
+        tag == fullTag || tag.startsWith("$fullTag,") || tag.contains(",$fullTag") || tag.contains(",$fullTag,")
     }
     return if (matches.isNotEmpty()) {
         matches.map { it.form }.distinct().joinToString(", ")
-    } else {
-        "-"
-    }
+    } else "-"
 }
 
+// 形容词变格：搜 nom_m, gen_f, dat_n, acc_pl, ins_m, prep_f 等
+private fun findAdjForm(inflections: List<InflectionEntity>, caseTag: String, gender: String): String {
+    val fullTag = "${caseTag}_${gender}"  // e.g. "nom_m"
+    val matches = inflections.filter {
+        val tag = it.grammarTag?.lowercase() ?: ""
+        tag == fullTag || tag.startsWith("$fullTag,") || tag.contains(",$fullTag") || tag.contains(",$fullTag,")
+    }
+    return if (matches.isNotEmpty()) {
+        matches.map { it.form }.distinct().joinToString(", ")
+    } else "-"
+}
+
+// 动词现在时/将来时：搜 pres_1sg, pres_2sg, pres_3sg, pres_1pl, pres_2pl, pres_3pl 和 fut_ 前缀
+private fun findVerbPresFutForm(inflections: List<InflectionEntity>, personTag: String, number: String): String {
+    // personTag: "1", "2", "3"; number: "sg", "pl"
+    val presTag = "pres_${personTag}${number}"  // e.g. "pres_1sg"
+    val futTag = "fut_${personTag}${number}"    // e.g. "fut_1sg"
+    val matches = inflections.filter {
+        val tag = it.grammarTag?.lowercase() ?: ""
+        tag == presTag || tag == futTag ||
+        tag.startsWith("$presTag,") || tag.startsWith("$futTag,") ||
+        tag.contains(",$presTag") || tag.contains(",$futTag") ||
+        tag.contains(",$presTag,") || tag.contains(",$futTag,")
+    }
+    return if (matches.isNotEmpty()) {
+        matches.map { it.form }.distinct().joinToString(", ")
+    } else "-"
+}
+
+// 动词过去时：搜 past_m, past_f, past_n, past_pl
 private fun findVerbPastForm(inflections: List<InflectionEntity>, genderOrPlural: String): String {
+    val fullTag = "past_${genderOrPlural}"  // e.g. "past_m"
     val matches = inflections.filter {
         val tag = it.grammarTag?.lowercase() ?: ""
-        tag.contains("past") && tag.contains(genderOrPlural)
+        tag == fullTag || tag.startsWith("$fullTag,") || tag.contains(",$fullTag") || tag.contains(",$fullTag,")
     }
     return if (matches.isNotEmpty()) {
         matches.map { it.form }.distinct().joinToString(", ")
-    } else {
-        "-"
-    }
+    } else "-"
 }
 
+// 动词命令式：搜 imp_sg, imp_pl
 private fun findVerbImperativeForm(inflections: List<InflectionEntity>, number: String): String {
+    val fullTag = "imp_${number}"  // e.g. "imp_sg"
     val matches = inflections.filter {
         val tag = it.grammarTag?.lowercase() ?: ""
-        tag.contains("imperative") && tag.contains(number)
+        tag == fullTag || tag.startsWith("$fullTag,") || tag.contains(",$fullTag") || tag.contains(",$fullTag,")
     }
     return if (matches.isNotEmpty()) {
         matches.map { it.form }.distinct().joinToString(", ")
-    } else {
-        "-"
-    }
+    } else "-"
 }

@@ -4,25 +4,37 @@ Parus v0.2 — 融合管线配置
 """
 
 import os
+import platform
+
+
+def _to_wsl_path(win_path):
+    """Convert a Windows path to WSL mount path if running under WSL/Linux."""
+    if platform.system() == 'Linux' and ':' in win_path:
+        # C:\Users\... -> /mnt/c/Users/...
+        drive = win_path[0].lower()
+        rest = win_path[2:].replace('\\', '/')
+        return f'/mnt/{drive}{rest}'
+    return win_path
+
 
 # ============================================================
 # 路径配置
 # ============================================================
 
-# 项目根
-PROJECT_ROOT = r"/mnt/d/Android/Parus"
+# 项目根 (动态获取，同时兼容 Windows 和 WSL)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 现有 BKRS 数据库
-BKRS_DB = os.path.join(PROJECT_ROOT, "app/src/main/assets/database/dict.db")
+BKRS_DB = os.path.join(PROJECT_ROOT, "app", "src", "main", "assets", "database", "dict.db")
 
 # OpenRussian ZIP
-OPEN_RUSSIAN_ZIP = r"/mnt/c/Users/Tanue Hou/Downloads/russian-dictionary-master.zip"
+OPEN_RUSSIAN_ZIP = _to_wsl_path(r"C:\Users\Tanue Hou\Downloads\russian-dictionary-master.zip")
 
 # Kaikki JSONL
-KAIKKI_JSONL = r"/mnt/c/Users/Tanue Hou/Downloads/kaikki.org-dictionary-Russian.jsonl"
+KAIKKI_JSONL = _to_wsl_path(r"C:\Users\Tanue Hou\Downloads\kaikki.org-dictionary-Russian.jsonl")
 
 # Tatoeba TSV
-TATOEBA_TSV = r"/mnt/c/Users/Tanue Hou/Downloads/Sentence pairs in Russian-Mandarin Chinese - 2026-06-26.tsv"
+TATOEBA_TSV = _to_wsl_path(r"C:\Users\Tanue Hou\Downloads\Sentence pairs in Russian-Mandarin Chinese - 2026-06-26.tsv")
 
 # 输出目录
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "pipeline", "output")
@@ -33,7 +45,9 @@ INTERMEDIATE_JSONL = os.path.join(OUTPUT_DIR, "intermediate.jsonl")
 
 # Phase 2 产出
 FUSED_JSONL = os.path.join(OUTPUT_DIR, "fused.jsonl")
-LLM_CACHE_JSON = os.path.join(OUTPUT_DIR, "llm_cache.json")
+
+# LLM 缓存：存放在项目根目录下，方便断点续传与融合脚本读取
+LLM_CACHE_JSON = os.path.join(PROJECT_ROOT, "llm_cache.json")
 
 # Phase 3 产出
 NEW_DB_PATH = os.path.join(PROJECT_ROOT, "app", "src", "main", "assets", "database", "dict_v2.db")
@@ -46,7 +60,7 @@ LOG_FILE = os.path.join(OUTPUT_DIR, "pipeline.log")
 # ============================================================
 
 # BKRS DSL 文件
-BKRS_GZ = r"/mnt/c/Users/Tanue Hou/.gemini/antigravity/brain/c6799849-977e-4cbd-94b1-ea495082674e/scratch/dabruks_260625.gz"
+BKRS_GZ = _to_wsl_path(r"C:\Users\Tanue Hou\.gemini\antigravity\brain\c6799849-977e-4cbd-94b1-ea495082674e\scratch\dabruks_260625.gz")
 
 # ============================================================
 # LLM 配置

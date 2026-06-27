@@ -7,7 +7,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "definitions",
+    tableName = "examples",
     indices = [Index(value = ["word_id"])],
     foreignKeys = [
         ForeignKey(
@@ -18,10 +18,10 @@ import androidx.room.PrimaryKey
         )
     ]
 )
-data class DefinitionEntity(
-    @PrimaryKey @ColumnInfo(name = "id") val id: Int = 0,
+data class ExampleEntity(
+    @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "id") val id: Int = 0,
     @ColumnInfo(name = "word_id") val wordId: Int,
-    @ColumnInfo(name = "source") val source: String,
-    @ColumnInfo(name = "definition") val definition: String,
-    @ColumnInfo(name = "confidence") val confidence: Int = 0
+    @ColumnInfo(name = "sentence_ru") val sentenceRu: String,
+    @ColumnInfo(name = "sentence_zh") val sentenceZh: String,
+    @ColumnInfo(name = "source") val source: String
 )

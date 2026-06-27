@@ -9,14 +9,15 @@ import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
 val appModule = module {
-    // 注入 Room 数据库，预填充来自 assets/database/dict.db
+    // 注入 Room 数据库，预填充来自 assets/database/dict_v2.db
     single {
         Room.databaseBuilder(
             androidContext(),
             AppDatabase::class.java,
             "dict.db"
         )
-        .createFromAsset("database/dict.db")
+        .createFromAsset("database/dict_v2.db")
+        .addMigrations(AppDatabase.MIGRATION_1_2)
         .fallbackToDestructiveMigration()
         .addCallback(object : androidx.room.RoomDatabase.Callback() {
             override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
