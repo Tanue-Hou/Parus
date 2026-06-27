@@ -20,6 +20,19 @@ from pipeline import config
 from pipeline.utils import get_difficulty_level
 
 # ============================================================
+# 工具函数
+# ============================================================
+
+def strip_stress(text):
+    """去除重音标记"""
+    if not text:
+        return ""
+    text = text.replace('\u0301', '')
+    text = text.replace('`', '')
+    text = text.replace('\'', '')
+    return text
+
+# ============================================================
 # 配置
 # ============================================================
 FUSED_JSONL = config.FUSED_JSONL
@@ -251,6 +264,24 @@ def build_database():
                 ru_text = ex.get("ru", "")
                 zh_text = ex.get("zh", "")
                 ex_source = ex.get("source", "unknown")
+
+                # Strip all stress marks from example text
+                ru_text = strip_stress(ru_text)
+                zh_text = strip_stress(zh_text)
+
+                # BKRS-embedded: keep all examples (no filtering)
+                if ex_source == "BKRS-embedded":
+                    if ru_text.strip():
+                        examples_batch.append((
+                            word_id,
+                            ru_text.strip(),
+                            zh_text.strip(),
+                            ex_source,
+                        ))
+                        ex_count += 1
+                    continue
+
+                # Other sources: only filter empty ru/zh (not by length)
                 if not ru_text.strip() or not zh_text.strip():
                     continue
                 examples_batch.append((

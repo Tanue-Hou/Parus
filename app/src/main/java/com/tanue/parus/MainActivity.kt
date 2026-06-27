@@ -42,6 +42,8 @@ import com.tanue.parus.data.model.InflectionEntity
 import com.tanue.parus.data.model.ExampleEntity
 import com.tanue.parus.presentation.search.SearchViewModel
 import org.koin.androidx.compose.koinViewModel
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -281,7 +283,7 @@ fun WordItemRow(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = word.lemmaStressed,
+                        text = buildStressedAnnotatedString(word.lemmaStressed),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -356,7 +358,7 @@ fun WordDetailScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = word.lemmaStressed,
+                    text = buildStressedAnnotatedString(word.lemmaStressed),
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -501,8 +503,22 @@ fun WordDetailScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 例句卡片
-            if (examples.isNotEmpty()) {
+            // 过滤和排序例句：按来源分组，保留新闻引用标签
+            val groupedExamples = remember(examples) {
+                val (phrases, sentences, news) = examples
+                    .filter { ex -> ex.sentenceRu.length >= 8 && ex.sentenceZh.isNotEmpty() }
+                    .sortedBy { Math.abs(it.sentenceRu.length - 25) }
+                    .partition { ex -> ex.source.equals("BKRS-embedded", ignoreCase = true) }
+                val (normal, newsItems) = sentences.partition { ex ->
+                    !ex.source.startsWith("News:", ignoreCase = true)
+                }
+                Triple(phrases.take(5), normal.take(5), newsItems.take(5))
+            }
+
+            val (phraseExamples, sentenceExamples, newsExamples) = groupedExamples
+            val hasAnyExamples = phraseExamples.isNotEmpty() || sentenceExamples.isNotEmpty() || newsExamples.isNotEmpty()
+
+            if (hasAnyExamples) {
                 Text(
                     text = "例句",
                     fontSize = 13.sp,
@@ -518,33 +534,113 @@ fun WordDetailScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        examples.forEachIndexed { index, ex ->
-                            if (index > 0) {
-                                HorizontalDivider(
-                                    color = Color.Gray.copy(alpha = 0.1f),
-                                    modifier = Modifier.padding(vertical = 12.dp)
-                                )
+                        // 短语固定搭配
+                        if (phraseExamples.isNotEmpty()) {
+                            Text(
+                                text = "短语固定搭配",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = AppleGray,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            phraseExamples.forEachIndexed { index, ex ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        color = Color.Gray.copy(alpha = 0.05f),
+                                        modifier = Modifier.padding(vertical = 6.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = ex.sentenceRu,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        lineHeight = 20.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text(
+                                        text = ex.sentenceZh,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        lineHeight = 18.sp
+                                    )
+                                }
                             }
-                            Column {
-                                Text(
-                                    text = ex.sentenceRu,
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    lineHeight = 20.sp
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = ex.sentenceZh,
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                    lineHeight = 18.sp
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = ex.source,
-                                    fontSize = 10.sp,
-                                    color = AppleGray
-                                )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        // 日常例句
+                        if (sentenceExamples.isNotEmpty()) {
+                            Text(
+                                text = "日常例句",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = AppleGray,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            sentenceExamples.forEachIndexed { index, ex ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        color = Color.Gray.copy(alpha = 0.05f),
+                                        modifier = Modifier.padding(vertical = 6.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = ex.sentenceRu,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        lineHeight = 20.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text(
+                                        text = ex.sentenceZh,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        lineHeight = 18.sp
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        // 新闻例句（保留引用）
+                        if (newsExamples.isNotEmpty()) {
+                            Text(
+                                text = "新闻例句",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = AppleGray,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            newsExamples.forEachIndexed { index, ex ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        color = Color.Gray.copy(alpha = 0.05f),
+                                        modifier = Modifier.padding(vertical = 6.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = ex.sentenceRu,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        lineHeight = 20.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text(
+                                        text = ex.sentenceZh,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        lineHeight = 18.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text(
+                                        text = ex.source,
+                                        fontSize = 10.sp,
+                                        color = AppleGray
+                                    )
+                                }
                             }
                         }
                     }
@@ -612,7 +708,7 @@ fun WordDetailScreen(
 
 @Composable
 fun RowScope.TableCell(
-    text: String,
+    text: AnnotatedString,
     weight: Float,
     isHeader: Boolean = false,
     textColor: Color = MaterialTheme.colorScheme.onSurface
@@ -620,8 +716,7 @@ fun RowScope.TableCell(
     Box(
         modifier = Modifier
             .weight(weight)
-            .border(0.5.dp, Color.Gray.copy(alpha = 0.15f))
-            .padding(8.dp),
+            .padding(vertical = 10.dp, horizontal = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -635,6 +730,21 @@ fun RowScope.TableCell(
 }
 
 @Composable
+fun RowScope.TableCell(
+    text: String,
+    weight: Float,
+    isHeader: Boolean = false,
+    textColor: Color = MaterialTheme.colorScheme.onSurface
+) {
+    TableCell(
+        text = AnnotatedString(text),
+        weight = weight,
+        isHeader = isHeader,
+        textColor = textColor
+    )
+}
+
+@Composable
 fun NounDeclensionTable(inflections: List<InflectionEntity>) {
     val cases = listOf(
         Triple("主格 (Им.)", "nom", "sg"),
@@ -645,20 +755,28 @@ fun NounDeclensionTable(inflections: List<InflectionEntity>) {
         Triple("前置格 (Предл.)", "prep", "sg")
     )
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(0.5.dp, Color.Gray.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+    ) {
         Row(modifier = Modifier.fillMaxWidth().background(Color.Gray.copy(alpha = 0.05f))) {
             TableCell(text = "格 (Case)", weight = 0.3f, isHeader = true)
             TableCell(text = "单数 (Sg.)", weight = 0.35f, isHeader = true)
             TableCell(text = "复数 (Pl.)", weight = 0.35f, isHeader = true)
         }
+        HorizontalDivider(color = Color.Gray.copy(alpha = 0.15f))
 
-        cases.forEach { (caseName, caseTag, _) ->
-            val sgForm = findNounForm(inflections, caseTag, "sg")
-            val plForm = findNounForm(inflections, caseTag, "pl")
+        cases.forEachIndexed { idx, (caseName, caseTag, _) ->
+            val sgForm = cleanAndDeduplicateForms(findNounForm(inflections, caseTag, "sg"))
+            val plForm = cleanAndDeduplicateForms(findNounForm(inflections, caseTag, "pl"))
             Row(modifier = Modifier.fillMaxWidth()) {
                 TableCell(text = caseName, weight = 0.3f, isHeader = true)
-                TableCell(text = sgForm, weight = 0.35f)
-                TableCell(text = plForm, weight = 0.35f)
+                TableCell(text = buildStressedAnnotatedString(sgForm), weight = 0.35f)
+                TableCell(text = buildStressedAnnotatedString(plForm), weight = 0.35f)
+            }
+            if (idx < cases.size - 1) {
+                HorizontalDivider(color = Color.Gray.copy(alpha = 0.08f))
             }
         }
     }
@@ -675,7 +793,11 @@ fun AdjDeclensionTable(inflections: List<InflectionEntity>) {
         Triple("前置格 (Предл.)", "prep", "sg")
     )
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(0.5.dp, Color.Gray.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+    ) {
         Row(modifier = Modifier.fillMaxWidth().background(Color.Gray.copy(alpha = 0.05f))) {
             TableCell(text = "格", weight = 0.2f, isHeader = true)
             TableCell(text = "阳性 (M.)", weight = 0.2f, isHeader = true)
@@ -683,18 +805,22 @@ fun AdjDeclensionTable(inflections: List<InflectionEntity>) {
             TableCell(text = "中性 (N.)", weight = 0.2f, isHeader = true)
             TableCell(text = "复数 (Pl.)", weight = 0.2f, isHeader = true)
         }
+        HorizontalDivider(color = Color.Gray.copy(alpha = 0.15f))
 
-        cases.forEach { (caseName, caseTag, _) ->
-            val mascForm = findAdjForm(inflections, caseTag, "m")
-            val femForm = findAdjForm(inflections, caseTag, "f")
-            val neutForm = findAdjForm(inflections, caseTag, "n")
-            val plForm = findAdjForm(inflections, caseTag, "pl")
+        cases.forEachIndexed { idx, (caseName, caseTag, _) ->
+            val mascForm = cleanAndDeduplicateForms(findAdjForm(inflections, caseTag, "m"))
+            val femForm = cleanAndDeduplicateForms(findAdjForm(inflections, caseTag, "f"))
+            val neutForm = cleanAndDeduplicateForms(findAdjForm(inflections, caseTag, "n"))
+            val plForm = cleanAndDeduplicateForms(findAdjForm(inflections, caseTag, "pl"))
             Row(modifier = Modifier.fillMaxWidth()) {
                 TableCell(text = caseName, weight = 0.2f, isHeader = true)
-                TableCell(text = mascForm, weight = 0.2f)
-                TableCell(text = femForm, weight = 0.2f)
-                TableCell(text = neutForm, weight = 0.2f)
-                TableCell(text = plForm, weight = 0.2f)
+                TableCell(text = buildStressedAnnotatedString(mascForm), weight = 0.2f)
+                TableCell(text = buildStressedAnnotatedString(femForm), weight = 0.2f)
+                TableCell(text = buildStressedAnnotatedString(neutForm), weight = 0.2f)
+                TableCell(text = buildStressedAnnotatedString(plForm), weight = 0.2f)
+            }
+            if (idx < cases.size - 1) {
+                HorizontalDivider(color = Color.Gray.copy(alpha = 0.08f))
             }
         }
     }
@@ -711,29 +837,39 @@ fun VerbConjugationTable(inflections: List<InflectionEntity>) {
             modifier = Modifier.padding(bottom = 6.dp)
         )
         
-        Row(modifier = Modifier.fillMaxWidth().background(Color.Gray.copy(alpha = 0.05f))) {
-            TableCell(text = "人称 (Pers.)", weight = 0.35f, isHeader = true)
-            TableCell(text = "单数 (Sg.)", weight = 0.325f, isHeader = true)
-            TableCell(text = "复数 (Pl.)", weight = 0.325f, isHeader = true)
-        }
-        
-        val persons = listOf(
-            Triple("第一人称 (Я / Мы)", "1", "sg"),
-            Triple("第二人称 (Ты / Вы)", "2", "sg"),
-            Triple("第三人称 (Он / Они)", "3", "sg")
-        )
-        
-        persons.forEach { (personName, personTag, _) ->
-            val sgForm = findVerbPresFutForm(inflections, personTag, "sg")
-            val plForm = findVerbPresFutForm(inflections, personTag, "pl")
-            Row(modifier = Modifier.fillMaxWidth()) {
-                TableCell(text = personName, weight = 0.35f, isHeader = true)
-                TableCell(text = sgForm, weight = 0.325f)
-                TableCell(text = plForm, weight = 0.325f)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(0.5.dp, Color.Gray.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+        ) {
+            Row(modifier = Modifier.fillMaxWidth().background(Color.Gray.copy(alpha = 0.05f))) {
+                TableCell(text = "人称 (Pers.)", weight = 0.35f, isHeader = true)
+                TableCell(text = "单数 (Sg.)", weight = 0.325f, isHeader = true)
+                TableCell(text = "复数 (Pl.)", weight = 0.325f, isHeader = true)
+            }
+            HorizontalDivider(color = Color.Gray.copy(alpha = 0.15f))
+            
+            val persons = listOf(
+                Triple("第一人称 (Я / Мы)", "1", "sg"),
+                Triple("第二人称 (Ты / Вы)", "2", "sg"),
+                Triple("第三人称 (Он / Они)", "3", "sg")
+            )
+            
+            persons.forEachIndexed { idx, (personName, personTag, _) ->
+                val sgForm = cleanAndDeduplicateForms(findVerbPresFutForm(inflections, personTag, "sg"))
+                val plForm = cleanAndDeduplicateForms(findVerbPresFutForm(inflections, personTag, "pl"))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    TableCell(text = personName, weight = 0.35f, isHeader = true)
+                    TableCell(text = buildStressedAnnotatedString(sgForm), weight = 0.325f)
+                    TableCell(text = buildStressedAnnotatedString(plForm), weight = 0.325f)
+                }
+                if (idx < persons.size - 1) {
+                    HorizontalDivider(color = Color.Gray.copy(alpha = 0.08f))
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(18.dp))
 
         Text(
             text = "过去时 (Past Tense)",
@@ -743,25 +879,32 @@ fun VerbConjugationTable(inflections: List<InflectionEntity>) {
             modifier = Modifier.padding(bottom = 6.dp)
         )
         
-        Row(modifier = Modifier.fillMaxWidth().background(Color.Gray.copy(alpha = 0.05f))) {
-            TableCell(text = "阳性 (Masc.)", weight = 0.25f, isHeader = true)
-            TableCell(text = "阴性 (Fem.)", weight = 0.25f, isHeader = true)
-            TableCell(text = "中性 (Neut.)", weight = 0.25f, isHeader = true)
-            TableCell(text = "复数 (Plur.)", weight = 0.25f, isHeader = true)
-        }
-        
-        val pastMasc = findVerbPastForm(inflections, "m")
-        val pastFem = findVerbPastForm(inflections, "f")
-        val pastNeut = findVerbPastForm(inflections, "n")
-        val pastPl = findVerbPastForm(inflections, "pl")
-        Row(modifier = Modifier.fillMaxWidth()) {
-            TableCell(text = pastMasc, weight = 0.25f)
-            TableCell(text = pastFem, weight = 0.25f)
-            TableCell(text = pastNeut, weight = 0.25f)
-            TableCell(text = pastPl, weight = 0.25f)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(0.5.dp, Color.Gray.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+        ) {
+            Row(modifier = Modifier.fillMaxWidth().background(Color.Gray.copy(alpha = 0.05f))) {
+                TableCell(text = "阳性 (Masc.)", weight = 0.25f, isHeader = true)
+                TableCell(text = "阴性 (Fem.)", weight = 0.25f, isHeader = true)
+                TableCell(text = "中性 (Neut.)", weight = 0.25f, isHeader = true)
+                TableCell(text = "复数 (Plur.)", weight = 0.25f, isHeader = true)
+            }
+            HorizontalDivider(color = Color.Gray.copy(alpha = 0.15f))
+            
+            val pastMasc = cleanAndDeduplicateForms(findVerbPastForm(inflections, "m"))
+            val pastFem = cleanAndDeduplicateForms(findVerbPastForm(inflections, "f"))
+            val pastNeut = cleanAndDeduplicateForms(findVerbPastForm(inflections, "n"))
+            val pastPl = cleanAndDeduplicateForms(findVerbPastForm(inflections, "pl"))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                TableCell(text = buildStressedAnnotatedString(pastMasc), weight = 0.25f)
+                TableCell(text = buildStressedAnnotatedString(pastFem), weight = 0.25f)
+                TableCell(text = buildStressedAnnotatedString(pastNeut), weight = 0.25f)
+                TableCell(text = buildStressedAnnotatedString(pastPl), weight = 0.25f)
+            }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(18.dp))
 
         Text(
             text = "命令式 (Imperative)",
@@ -771,16 +914,23 @@ fun VerbConjugationTable(inflections: List<InflectionEntity>) {
             modifier = Modifier.padding(bottom = 6.dp)
         )
         
-        Row(modifier = Modifier.fillMaxWidth().background(Color.Gray.copy(alpha = 0.05f))) {
-            TableCell(text = "单数 (ты)", weight = 0.5f, isHeader = true)
-            TableCell(text = "复数 (вы)", weight = 0.5f, isHeader = true)
-        }
-        
-        val impSg = findVerbImperativeForm(inflections, "sg")
-        val impPl = findVerbImperativeForm(inflections, "pl")
-        Row(modifier = Modifier.fillMaxWidth()) {
-            TableCell(text = impSg, weight = 0.5f)
-            TableCell(text = impPl, weight = 0.5f)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(0.5.dp, Color.Gray.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+        ) {
+            Row(modifier = Modifier.fillMaxWidth().background(Color.Gray.copy(alpha = 0.05f))) {
+                TableCell(text = "单数 (ты)", weight = 0.5f, isHeader = true)
+                TableCell(text = "复数 (вы)", weight = 0.5f, isHeader = true)
+            }
+            HorizontalDivider(color = Color.Gray.copy(alpha = 0.15f))
+            
+            val impSg = cleanAndDeduplicateForms(findVerbImperativeForm(inflections, "sg"))
+            val impPl = cleanAndDeduplicateForms(findVerbImperativeForm(inflections, "pl"))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                TableCell(text = buildStressedAnnotatedString(impSg), weight = 0.5f)
+                TableCell(text = buildStressedAnnotatedString(impPl), weight = 0.5f)
+            }
         }
     }
 }
@@ -805,7 +955,7 @@ fun GeneralInflectionsList(inflections: List<InflectionEntity>) {
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = inflection.form,
+                    text = buildStressedAnnotatedString(inflection.form),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -820,6 +970,118 @@ fun GeneralInflectionsList(inflections: List<InflectionEntity>) {
             }
         }
     }
+}
+
+// 辅助方法：重音加粗与颜色高亮引擎 (自动清除所有单引号、反引号、Combining Accent 并对发重音的元音换色高亮，同时高亮ё/Ё)
+fun buildStressedAnnotatedString(
+    text: String,
+    highlightColor: Color = Color(0xFFD32F2F) // 高端深红色
+): AnnotatedString {
+    if (text == "-" || text.isEmpty()) return AnnotatedString(text)
+    
+    val vowels = "аеиоуыэюяёАЕИОУЫЭЮЯЁ"
+    val stressMarkers = "'\u0301`’"
+    
+    val builder = AnnotatedString.Builder()
+    val cleanText = java.lang.StringBuilder()
+    val stressedIndices = mutableListOf<Int>()
+    
+    var i = 0
+    while (i < text.length) {
+        val c = text[i]
+        if (stressMarkers.contains(c)) {
+            // 如果前一个字符是元音，则将该元音在cleanText中的当前位置记为重音
+            if (cleanText.isNotEmpty()) {
+                val lastChar = cleanText.last()
+                if (vowels.contains(lastChar)) {
+                    val lastIdx = cleanText.length - 1
+                    if (!stressedIndices.contains(lastIdx)) {
+                        stressedIndices.add(lastIdx)
+                    }
+                }
+            }
+            // 跳过，不把重音符号追加到 cleanText 中
+        } else {
+            cleanText.append(c)
+        }
+        i++
+    }
+    
+    val finalStr = cleanText.toString()
+    builder.append(finalStr)
+    
+    val hasExplicitStress = stressedIndices.isNotEmpty()
+    
+    // 应用重音换色及加粗样式
+    for (idx in stressedIndices) {
+        builder.addStyle(
+            style = SpanStyle(
+                color = highlightColor,
+                fontWeight = FontWeight.Bold
+            ),
+            start = idx,
+            end = idx + 1
+        )
+    }
+    
+    // 若没有显式标音，自动高亮任何 ё / Ё
+    if (!hasExplicitStress) {
+        for (idx in finalStr.indices) {
+            val c = finalStr[idx]
+            if (c == 'ё' || c == 'Ё') {
+                builder.addStyle(
+                    style = SpanStyle(
+                        color = highlightColor,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    start = idx,
+                    end = idx + 1
+                )
+            }
+        }
+    }
+    
+    return builder.toAnnotatedString()
+}
+
+// 辅助方法：过滤并去重变格变位词形 (去除 old spelling、将来时多词复合、保留重音剔除无重音重复项)
+private fun cleanAndDeduplicateForms(rawFormsString: String): String {
+    if (rawFormsString == "-" || rawFormsString.isEmpty()) return "-"
+    
+    fun stripStress(str: String): String {
+        return str.replace("'", "").replace("\u0301", "").lowercase()
+    }
+    
+    fun hasStress(str: String): Boolean {
+        return str.contains("'") || str.contains("\u0301") || str.contains("ё") || str.contains("Ё")
+    }
+
+    val forms = rawFormsString.split(",").map { it.trim() }
+    val filtered = mutableListOf<String>()
+    
+    for (f in forms) {
+        if (f.isEmpty()) continue
+        // 过滤以 ъ/Ъ 结尾的旧俄语拼写
+        if (f.endsWith("ъ", ignoreCase = true)) continue
+        // 过滤包含空格的复合形式 (例如 "буду работать")
+        if (f.contains(" ")) continue
+        filtered.add(f)
+    }
+    
+    // 按是否有重音标志降序排序，使 stressed 形式排在前面以进行去重保留
+    val sorted = filtered.sortedWith(compareByDescending { hasStress(it) })
+    val deduped = mutableListOf<String>()
+    val seenNorm = mutableSetOf<String>()
+    
+    for (f in sorted) {
+        val norm = stripStress(f)
+        if (norm !in seenNorm) {
+            seenNorm.add(norm)
+            deduped.add(f)
+        }
+    }
+    
+    return if (deduped.isNotEmpty()) deduped.joinToString(", ") else "-"
 }
 
 // 名词变格：搜 nom_sg, gen_sg, dat_sg, acc_sg, ins_sg, prep_sg, nom_pl, gen_pl, dat_pl, acc_pl, ins_pl, prep_pl
@@ -848,7 +1110,6 @@ private fun findAdjForm(inflections: List<InflectionEntity>, caseTag: String, ge
 
 // 动词现在时/将来时：搜 pres_1sg, pres_2sg, pres_3sg, pres_1pl, pres_2pl, pres_3pl 和 fut_ 前缀
 private fun findVerbPresFutForm(inflections: List<InflectionEntity>, personTag: String, number: String): String {
-    // personTag: "1", "2", "3"; number: "sg", "pl"
     val presTag = "pres_${personTag}${number}"  // e.g. "pres_1sg"
     val futTag = "fut_${personTag}${number}"    // e.g. "fut_1sg"
     val matches = inflections.filter {
