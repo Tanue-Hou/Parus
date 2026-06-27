@@ -281,8 +281,8 @@ def build_database():
                         ex_count += 1
                     continue
 
-                # Other sources: only filter empty ru/zh (not by length)
-                if not ru_text.strip() or not zh_text.strip():
+                # Other sources: only filter empty ru (allow empty zh for News)
+                if not ru_text.strip():
                     continue
                 examples_batch.append((
                     word_id,
