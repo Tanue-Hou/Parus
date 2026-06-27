@@ -314,7 +314,7 @@ fun WordItemRow(
             Spacer(modifier = Modifier.height(6.dp))
 
             // 释义预览
-            val briefText = definitions.joinToString("；") { it.definition }
+            val briefText = definitions.joinToString("；") { stripStressSymbols(it.definition) }
             Text(
                 text = if (briefText.isNotEmpty()) briefText else "暂无释义",
                 fontSize = 14.sp,
@@ -425,14 +425,14 @@ fun WordDetailScreen(
                                 // 解析释义文本，• 开头的行作为例句
                                 val defLines = df.definition.split("\n")
                                 defLines.forEach { defLine ->
-                                    val trimmed = defLine.trim()
+                                    val trimmed = defLine.trim().replace("'", "")
                                     if (trimmed.startsWith("•") || trimmed.startsWith("→")) {
                                         // 例句行 — 灰色小字
                                         val exampleText = trimmed.removePrefix("•").removePrefix("→").trim()
                                         if (exampleText.isNotEmpty()) {
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
-                                                text = exampleText,
+                                                text = stripStressSymbols(exampleText),
                                                 fontSize = 13.sp,
                                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                                 lineHeight = 18.sp
@@ -441,7 +441,7 @@ fun WordDetailScreen(
                                     } else {
                                         if (trimmed.isNotEmpty()) {
                                             Text(
-                                                text = trimmed,
+                                                text = stripStressSymbols(trimmed),
                                                 fontSize = 15.sp,
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 lineHeight = 22.sp
@@ -505,12 +505,24 @@ fun WordDetailScreen(
 
             // 过滤和排序例句：按来源分组，保留新闻引用标签
             val groupedExamples = remember(examples) {
-                val (phrases, sentences, news) = examples
-                    .filter { ex -> ex.sentenceRu.length >= 8 && ex.sentenceZh.isNotEmpty() }
-                    .sortedBy { Math.abs(it.sentenceRu.length - 25) }
+                // 先按来源优先级排序：BKRS-embedded > AI-Generated > News > Tatoeba > Kaikki
+                val sourcePriority = mapOf(
+                    "BKRS-embedded" to 0,
+                    "AI-Generated" to 1,
+                    "News" to 2,
+                    "Tatoeba" to 3,
+                    "Kaikki" to 4
+                )
+                val sorted = examples
+                    .filter { ex -> 
+                        ex.sentenceRu.length >= 8 && 
+                        (ex.sentenceZh.isNotEmpty() || ex.source.startsWith("News", ignoreCase = true)) 
+                    }
+                    .sortedWith(compareBy({ sourcePriority[ex.source] ?: 99 }, { Math.abs(it.sentenceRu.length - 25) }))
+                val (phrases, remaining) = sorted
                     .partition { ex -> ex.source.equals("BKRS-embedded", ignoreCase = true) }
-                val (normal, newsItems) = sentences.partition { ex ->
-                    !ex.source.startsWith("News:", ignoreCase = true)
+                val (normal, newsItems) = remaining.partition { ex ->
+                    !ex.source.startsWith("News:", ignoreCase = true) && !ex.source.equals("News", ignoreCase = true)
                 }
                 Triple(phrases.take(5), normal.take(5), newsItems.take(5))
             }
@@ -627,14 +639,15 @@ fun WordDetailScreen(
                                         color = MaterialTheme.colorScheme.onSurface,
                                         lineHeight = 20.sp
                                     )
-                                    Spacer(modifier = Modifier.height(3.dp))
-                                    Text(
-                                        text = ex.sentenceZh,
-                                        fontSize = 13.sp,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                        lineHeight = 18.sp
-                                    )
-                                    Spacer(modifier = Modifier.height(3.dp))
+                                    if (ex.sentenceZh.isNotEmpty()) {
+                                        Text(
+                                            text = ex.sentenceZh,
+                                            fontSize = 13.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                            lineHeight = 18.sp
+                                        )
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                    }
                                     Text(
                                         text = ex.source,
                                         fontSize = 10.sp,
@@ -1146,4 +1159,18 @@ private fun findVerbImperativeForm(inflections: List<InflectionEntity>, number: 
     return if (matches.isNotEmpty()) {
         matches.map { it.form }.distinct().joinToString(", ")
     } else "-"
+}
+
+// 辅助方法：清除所有重音和单引号标记的纯文本转换
+fun stripStressSymbols(text: String): String {
+    if (text.isEmpty()) return ""
+    val stressMarkers = "'\u0301`’"
+    val sb = java.lang.StringBuilder()
+    for (i in 0 until text.length) {
+        val c = text[i]
+        if (!stressMarkers.contains(c)) {
+            sb.append(c)
+        }
+    }
+    return sb.toString()
 }

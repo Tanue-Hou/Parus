@@ -145,6 +145,9 @@ def build_database():
     pos_counts = {}
     skipped_no_def = 0
     skipped_kaikki_only = 0
+    skipped_junk = 0  # P0-4
+    infl_dedup_count = 0  # P0-2
+    ex_etymology_filtered = 0  # P0-3
 
     # 数据库自增 ID 计数器
     word_id_counter = 1
@@ -183,6 +186,23 @@ def build_database():
             # 跳过没有 BKRS 释义的词条（Kaikki-only），减小数据库体积
             if not has_bkrs:
                 skipped_kaikki_only += 1
+                continue
+
+            # P0-4: 垃圾词过滤
+            JUNK_POS = {"punct", "symbol", "character"}
+            VALID_SINGLE_CHARS = {"а", "и", "в", "к", "с", "у", "о", "б", "я"}
+            if pos in JUNK_POS:
+                skipped_junk += 1
+                continue
+            if len(lemma) <= 1 and lemma not in VALID_SINGLE_CHARS:
+                skipped_junk += 1
+                continue
+            if lemma.startswith('"') or ('"' in lemma and lemma.count('"') >= 2):
+                skipped_junk += 1
+                continue
+            # 过滤非西里尔词条（bts, gac trumpchi, c-moll, 200, 300 等）
+            if lemma and not any('\u0400' <= c <= '\u04ff' for c in lemma):
+                skipped_junk += 1
                 continue
 
             # 插入 words
@@ -231,6 +251,17 @@ def build_database():
 
             # 插入 definitions
             if definition_text and definition_text.strip():
+                # P2-3: HTML标签清理
+                import html
+                definition_text = html.unescape(definition_text)
+                definition_text = re.sub(r'<[^>]+>', '', definition_text)
+                definition_text = re.sub(r'\s+', ' ', definition_text).strip()
+                
+                # P2-4: 极短释义/参见释义降权
+                short_def = len(definition_text) < 4 or definition_text.startswith('см.') or 'см.' in definition_text[:10]
+                if short_def:
+                    confidence = 0
+                
                 defs_batch.append((
                     def_id_counter,
                     word_id,
@@ -245,10 +276,22 @@ def build_database():
 
             # 插入 inflections
             inflections = entry.get("inflections", [])
+            seen_infl = set()  # P0-2: per-word级别去重
             for infl in inflections:
                 if len(infl) >= 2:
                     form = infl[0]
                     grammar_tag = infl[1]
+                    # P0-2: 去重键 = (去重音小写词形, grammar_tag)
+                    dedup_key = (
+                        form.replace("'", "").replace("\u0301", "").lower(),
+                        grammar_tag
+                    )
+                    if dedup_key in seen_infl:
+                        infl_dedup_count += 1
+                        continue
+                    seen_infl.add(dedup_key)
+                    # P1-2: 统一重音格式：ASCII单引号 → Unicode组合重音
+                    form = re.sub(r"'(?=[а-яё])", "\u0301", form)
                     inflections_batch.append((
                         infl_id_counter,
                         word_id,
@@ -264,6 +307,15 @@ def build_database():
                 ru_text = ex.get("ru", "")
                 zh_text = ex.get("zh", "")
                 ex_source = ex.get("source", "unknown")
+
+                # P0-3: 过滤词源分析冒充例句（含→箭头 或 超过3个括号）
+                if '\u2192' in ru_text or '\u27f6' in ru_text or ru_text.count('(') > 3:
+                    ex_etymology_filtered += 1
+                    continue
+                # P0-3: 过滤过短“例句”（少与5个字符）
+                if len(ru_text.strip()) < 5:
+                    ex_etymology_filtered += 1
+                    continue
 
                 # Strip all stress marks from example text
                 ru_text = strip_stress(ru_text)
@@ -358,6 +410,9 @@ def build_database():
     print(f"  Total Examples:    {ex_count}")
     print(f"  No Definition:     {skipped_no_def}")
     print(f"  Kaikki-only skip:  {skipped_kaikki_only}")
+    print(f"  Junk words skip:   {skipped_junk}")
+    print(f"  Infl dedup drop:   {infl_dedup_count}")
+    print(f"  Etymology ex filt: {ex_etymology_filtered}")
 
     print(f"\n  POS Distribution:")
     sorted_pos = sorted(pos_counts.items(), key=lambda x: -x[1])
