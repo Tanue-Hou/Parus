@@ -191,6 +191,21 @@ def build_database():
             lemma = entry.get("lemma", "")
             lemma_stressed = entry.get("lemma_stressed", lemma)
             pos = entry.get("pos")
+            # 中文词性→英文标准标签
+            POS_MAP = {
+                "名词": "noun", "名": "noun", "名词，阳性": "noun",
+                "动词": "verb", "动": "verb",
+                "形容词": "adj", "形": "adj",
+                "副词": "adv",
+                "专有名词": "name",
+                "感叹词": "intj", "叹词": "intj",
+                "数词": "num",
+                "谚语": "proverb",
+                "连词": "conj",
+                "短语": "phrase",
+            }
+            if pos in POS_MAP:
+                pos = POS_MAP[pos]
             definition_text = entry.get("definition")
             has_bkrs = entry.get("has_bkrs", False)
 
@@ -201,7 +216,12 @@ def build_database():
                     # 使用 AI 翻译的释义
                     trans = ai_translated[lemma]
                     definition_text = trans.get("definition", definition_text)
-                    pos = trans.get("pos", pos) or pos
+                    # 翻译的pos是中文，需要映射
+                    trans_pos = trans.get("pos", "")
+                    if trans_pos in POS_MAP:
+                        pos = POS_MAP[trans_pos]
+                    elif trans_pos:
+                        pos = trans_pos
                     # source 和 confidence 在下面统一设置
                 else:
                     skipped_kaikki_only += 1
