@@ -99,6 +99,17 @@ def build_database():
 
     # 2. 加载 LLM 缓存
     llm_cache = load_llm_cache()
+    
+    # 2b. 加载 AI 翻译缓存（P1-1: Kaikki-only词条翻译）
+    ai_translated = {}
+    ai_translated_path = os.path.join(os.path.dirname(FUSED_JSONL), "ai_translated.json")
+    if os.path.exists(ai_translated_path):
+        try:
+            with open(ai_translated_path, "r", encoding="utf-8") as f:
+                ai_translated = json.load(f)
+            print(f"  [AI Translated] Loaded {len(ai_translated)} translated definitions.")
+        except Exception as e:
+            print(f"  [AI Translated] Warning: Failed to load ({e})")
 
     # 3. 初始化数据库
     if os.path.exists(NEW_DB_PATH):
@@ -184,9 +195,18 @@ def build_database():
             has_bkrs = entry.get("has_bkrs", False)
 
             # 跳过没有 BKRS 释义的词条（Kaikki-only），减小数据库体积
+            # P1-1: 如果有 AI 翻译则入库
             if not has_bkrs:
-                skipped_kaikki_only += 1
-                continue
+                if lemma in ai_translated:
+                    # 使用 AI 翻译的释义
+                    trans = ai_translated[lemma]
+                    definition_text = trans.get("definition", definition_text)
+                    pos = trans.get("pos", pos) or pos
+                    source = "AI-Translated"
+                    confidence = 2
+                else:
+                    skipped_kaikki_only += 1
+                    continue
 
             # P0-4: 垃圾词过滤
             JUNK_POS = {"punct", "symbol", "character"}
