@@ -1,0 +1,27 @@
+[2026-06-27 02:16:03] Prepared batch of 100 items. Remaining to process: 41888
+[2026-06-27 02:16:18] Saved 'авиатрасса' to cache. Total cached: 101/42088 (0.24%)
+[2026-06-27 02:16:18] Saved 'абразия' to cache. Total cached: 102/42088 (0.24%)
+[2026-06-27 02:16:18] Saved 'авиатранспорт' to cache. Total cached: 103/42088 (0.24%)
+[2026-06-27 02:16:19] Saved 'авиация' to cache. Total cached: 104/42088 (0.25%)
+[2026-06-27 02:16:19] Saved 'авиационныи' to cache. Total cached: 105/42088 (0.25%)
+[2026-06-27 02:16:49] Registered 25 new workers. Total active: 25
+[2026-06-27 02:17:08] Worker 8736e0a3-22f5-43cb-9556-1ca96f8c88c2 failed for 'австриика'. Error: The subagent Definition Fusion Worker for австриика (definition_fusion_worker) with id "8736e0a3-22f5-43cb-9556-1ca96f8c88c2" encountered an error and has either stopped or failed to start execution: RESOURCE_EXHAUSTED (code 429): You have exhausted your capacity on this model.
+[2026-06-27 02:17:08] Worker d10de252-87fb-4077-813d-a05db64908a5 failed for 'австралия'. Error: The subagent Definition Fusion Worker for австралия (definition_fusion_worker) with id "d10de252-87fb-4077-813d-a05db64908a5" encountered an error and has either stopped or failed to start execution: RESOURCE_EXHAUSTED (code 429): You have exhausted your capacity on this model.
+[2026-06-27 02:17:08] Worker 053abc4d-145e-4d1e-b4a2-457d5ee99c8f failed for 'авто'. Error: The subagent Definition Fusion Worker for авто (definition_fusion_worker) with id "053abc4d-145e-4d1e-b4a2-457d5ee99c8f" encountered an error and has either stopped or failed to start execution: RESOURCE_EXHAUSTED (code 429): You have exhausted your capacity on this model.
+[2026-06-27 02:17:08] Worker 494d56b7-0511-4161-97cf-174d81737cd1 failed for 'автобан'. Error: The subagent Definition Fusion Worker for автобан (definition_fusion_worker) with id "494d56b7-0511-4161-97cf-174d81737cd1" encountered an error and has either stopped or failed to start execution: RESOURCE_EXHAUSTED (code 429): You have exhausted your capacity on this model.
+[2026-06-27 02:17:08] Worker 2769a489-8f72-44fa-b91d-5bdda0acc585 failed for 'автаркия'. Error: The subagent Definition Fusion Worker for автаркия (definition_fusion_worker) with id "2769a489-8f72-44fa-b91d-5bdda0acc585" encountered an error and has either stopped or failed to start execution: RESOURCE_EXHAUSTED (code 429): You have exhausted your capacity on this model. Resets in 0s.
+[2026-06-27 02:17:08] Worker 9ab37874-9e7f-461c-9c15-9937bf8ba371 failed for 'автобаза'. Error: The subagent Definition Fusion Worker for автобаза (definition_fusion_worker) with id "9ab37874-9e7f-461c-9c15-9937bf8ba371" encountered an error and has either stopped or failed to start execution: RESOURCE_EXHAUSTED (code 429): You have exhausted your capacity on this model. Resets in 0s.
+[2026-06-27 02:17:08] Worker ed76106d-15cd-4798-a4db-d2cc09acc3d7 failed for 'автобиографическии'. Error: The subagent Definition Fusion Worker for автобиографическии (definition_fusion_worker) with id "ed76106d-15cd-4798-a4db-d2cc09acc3d7" encountered an error and has either stopped or failed to start execution: RESOURCE_EXHAUSTED (code 429): You have exhausted your capacity on this model.
+[2026-06-27 02:17:08] Parsed transcript. Active workers remaining: 0. Cache size: 123
+[2026-06-27 02:17:25] Parsed transcript. Active workers remaining: 13. Cache size: 123
+[2026-06-27 02:17:28] Parsed transcript. Active workers remaining: 5. Cache size: 133
+[2026-06-27 02:17:48] Worker 700a9059-ff4e-45bb-bca6-3add7edec09f failed for 'автогужевои'. Error: The subagent Definition Fusion Worker for автогужевои (definition_fusion_worker) with id "700a9059-ff4e-45bb-bca6-3add7edec09f" encountered an error and has either stopped or failed to start execution: RESOURCE_EXHAUSTED (code 429): You have exhausted your capacity on this model. Resets in 0s.
+[2026-06-27 02:17:48] Parsed transcript. Active workers remaining: 0. Cache size: 137
+[2026-06-27 02:17:56] Waiting for 1 active workers. Cache size: 137/42088.
+[2026-06-27 02:18:20] Parsed transcript. Cache size: 137/42088 (0.33%). Active in pool: 0. Generated 15 next workers.
+[2026-06-27 02:18:32] Parsed transcript. Cache size: 137/42088 (0.33%). Active in pool: 0. Generated 15 next workers.
+[2026-06-27 02:18:34] Parsed transcript. Cache size: 137/42088 (0.33%). Active in pool: 0. Generated 15 next workers.
+[2026-06-27 02:18:59] Parsed transcript. Cache size: 153/42088 (0.36%). Active in pool: 0. Generated 15 next workers.
+[2026-06-27 02:19:12] Parsed transcript. Cache size: 153/42088 (0.36%). Active in pool: 0. Generated 15 next workers.
+[2026-06-27 02:19:43] Parsed transcript. Cache size: 166/42088 (0.39%). Active in pool: 0. Generated 15 next workers.
+[2026-06-27 02:20:05] Parsed transcript. Cache size: 181/42088 (0.43%). Active in pool: 0. Generated 15 next workers.

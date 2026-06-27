@@ -1,0 +1,11 @@
+[2026-06-27] Phase 2 数据增强完成
+- 脚本: pipeline/phase2_enrich.py（纯规则，无LLM）
+- 词性补全: 637,295/637,295 (100%) — 从82%缺失到0%缺失
+  - pymorphy3: 0（import失败，已降级到其他源）
+  - OpenRussian: 58,425
+  - Kaikki: 382,225
+  - 后缀启发: 196,645（BKRS-only词条）
+- 变格清洗: 421,003词条有变格，2,097,693条（去重+去噪声）
+- 例句关联: 27,810词条有例句（Tatoeba+BKRS内嵌+Kaikki）
+- 产出: pipeline/output/fused.jsonl (637,295行)
+- 耗时: ~2分钟

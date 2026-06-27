@@ -1,0 +1,9 @@
+[2026-06-27] Phase 1 预处理脚本完成
+- pipeline/phase1_preprocess.py: 637,295 词条聚合
+  - BKRS DSL: 255,188 词条
+  - OpenRussian CSV: 58,425 词条
+  - Kaikki JSONL: 421,282 词条
+  - Tatoeba TSV: 10,534 词有关联例句
+  - 有例句(任一源): 35,260 词条 (5.5%)
+- 产出: pipeline/output/intermediate.jsonl (637,295 行)
+- 修复: config.py 路径从 Windows 风格改为 WSL /mnt/ 风格

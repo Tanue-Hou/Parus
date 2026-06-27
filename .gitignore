@@ -18,5 +18,16 @@ local.properties
 *.db
 *.db-journal
 
+# 管线产出
+pipeline/output/
+llm_cache.json
+llm_fusion_inputs.json
+subdata.json
+
+# Python 缓存
+__pycache__/
+tasks/__pycache__/
+pipeline/__pycache__/
+
 # IDE
 .idea/vcs.xml
