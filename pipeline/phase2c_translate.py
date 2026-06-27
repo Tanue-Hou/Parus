@@ -6,7 +6,7 @@ Phase 2c — Kaikki-only 词条翻译脚本
 按词频由高到低分批处理，先跑前 2 万个高频词。
 """
 
-import json, os, sys, time, re, urllib.request, urllib.error
+import json, os, sys, time, re, urllib.request, urllib.error, threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 从.env读取API key
@@ -25,24 +25,41 @@ MODEL = 'deepseek-chat'
 
 OUTPUT = '/mnt/d/Android/Parus/pipeline/output/ai_translated.json'
 FUSED_JSONL = '/mnt/d/Android/Parus/pipeline/output/fused.jsonl'
-BATCH_SIZE = 50
+BATCH_SIZE = 100
 MAX_WORKERS = 10
 MAX_LEMMAS = 20000  # 先跑前2万
 
 def get_kaikki_only_words():
     """从fused.jsonl提取Kaikki-only词条（有英文释义无中文）"""
     words = []
+    # 跳过垃圾词和组合形式
+    JUNK_POS = {"punct", "symbol", "character", "suffix", "prefix", "combining_form"}
+    VALID_SINGLE_CHARS = {"а", "и", "в", "к", "с", "у", "о", "б", "я"}
+    # 只提取有意义的词类
+    VALID_POS = {"noun", "verb", "adj", "adv", "name", "pron", "num", "prep", "conj", "intj", "part", "phrase", "proverb"}
+    
     with open(FUSED_JSONL, 'r', encoding='utf-8') as f:
         for line in f:
             entry = json.loads(line)
             has_bkrs = entry.get('has_bkrs', False)
             if not has_bkrs:
                 lemma = entry.get('lemma', '')
+                pos = entry.get('pos', '')
+                
+                # 只提取有意义的词类
+                if pos not in VALID_POS:
+                    continue
+                if len(lemma) <= 1 and lemma not in VALID_SINGLE_CHARS:
+                    continue
+                if lemma.startswith('"') or ('"' in lemma and lemma.count('"') >= 2):
+                    continue
+                if lemma and not any('\u0400' <= c <= '\u04ff' for c in lemma):
+                    continue
+                
                 # Kaikki-only词条的definition为None，释义在translations_en或kaikki_glosses_en
                 def_en = entry.get('translations_en') or entry.get('kaikki_glosses_en') or ''
                 if isinstance(def_en, list):
                     def_en = '; '.join(def_en)
-                pos = entry.get('pos', '')
                 if lemma and def_en:
                     words.append((lemma, def_en, pos))
     return words
@@ -68,10 +85,12 @@ def call_deepseek(prompt):
             resp = urllib.request.urlopen(req, timeout=60)
             result = json.loads(resp.read().decode('utf-8'))
             content = result['choices'][0]['message']['content']
-            # 提取JSON
-            json_match = re.search(r'\[.*?\]', content, re.DOTALL)
-            if json_match:
-                return json.loads(json_match.group(0))
+            # 提取JSON（匹配最外层[]）
+            start = content.find('[')
+            end = content.rfind(']')
+            if start != -1 and end != -1 and end > start:
+                json_str = content[start:end+1]
+                return json.loads(json_str)
             return []
         except Exception as e:
             if attempt < 2:
@@ -132,6 +151,7 @@ def main():
     print(f"Batches: {len(batches)}")
     
     all_translated = {}
+    save_lock = threading.Lock()
     
     # 加载已有结果
     if os.path.exists(OUTPUT):
@@ -139,18 +159,30 @@ def main():
             all_translated = json.load(f)
         print(f"Loaded existing: {len(all_translated)} lemmas")
     
-    for i, batch in enumerate(batches):
-        print(f"\nBatch {i+1}/{len(batches)} ({len(batch)} words)...")
-        results = translate_batch(batch)
-        for lemma, data in results.items():
-            all_translated[lemma] = data
-        
-        # 每批保存
-        with open(OUTPUT, 'w', encoding='utf-8') as f:
-            json.dump(all_translated, f, ensure_ascii=False)
-        
-        print(f"  Total: {len(all_translated)} lemmas translated")
-        time.sleep(0.5)
+    def save_progress():
+        with save_lock:
+            with open(OUTPUT, 'w', encoding='utf-8') as f:
+                json.dump(all_translated, f, ensure_ascii=False)
+    
+    # 并行处理
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(translate_batch, batch): i for i, batch in enumerate(batches)}
+        completed = 0
+        for future in as_completed(futures):
+            batch_idx = futures[future]
+            try:
+                results = future.result()
+                for lemma, data in results.items():
+                    all_translated[lemma] = data
+                completed += 1
+                if completed % 10 == 0 or completed == len(batches):
+                    save_progress()
+                    print(f"  [{completed}/{len(batches)}] Total: {len(all_translated)} lemmas translated")
+            except Exception as e:
+                print(f"  [WARN] Batch {batch_idx} failed: {e}")
+    
+    # 最终保存
+    save_progress()
     
     print(f"\n=== Done ===")
     print(f"Lemmas translated: {len(all_translated)}")

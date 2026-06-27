@@ -202,8 +202,7 @@ def build_database():
                     trans = ai_translated[lemma]
                     definition_text = trans.get("definition", definition_text)
                     pos = trans.get("pos", pos) or pos
-                    source = "AI-Translated"
-                    confidence = 2
+                    # source 和 confidence 在下面统一设置
                 else:
                     skipped_kaikki_only += 1
                     continue
@@ -243,31 +242,41 @@ def build_database():
                 pos_counts[pos] = pos_counts.get(pos, 0) + 1
 
             # 7. LLM 语义融合释义处理
-            source = "BKRS"
-            confidence = 100
+            # 先重置source，但保留AI-Translated
+            if has_bkrs:
+                source = "BKRS"
+                confidence = 100
+            elif lemma in ai_translated:
+                source = "AI-Translated"
+                confidence = 2
+            else:
+                source = "BKRS"
+                confidence = 100
             
-            # 优先从 llm_cache 中获取融合释义
-            if lemma in llm_cache:
-                cache_entry = llm_cache[lemma]
-                fused_def = cache_entry.get("definition")
-                if fused_def:
-                    definition_text = fused_def.strip()
-                    gov = cache_entry.get("government")
-                    asp = cache_entry.get("aspect")
-                    notes = []
-                    if gov and gov not in ("null", "None"):
-                        notes.append(f"【接格】{gov}")
-                    if asp and asp not in ("null", "None"):
-                        notes.append(f"【体】{asp}")
-                    if notes:
-                        definition_text = " / ".join(notes) + "\n" + definition_text
-                    
-                    source = "AI-Fused"
-                    confidence = 3
-                    llm_fused_count += 1
-            
-            if source == "BKRS" and definition_text:
-                bkrs_count += 1
+            # P1-1: AI-Translated 跳过LLM融合
+            if has_bkrs:
+                # 优先从 llm_cache 中获取融合释义
+                if lemma in llm_cache:
+                    cache_entry = llm_cache[lemma]
+                    fused_def = cache_entry.get("definition")
+                    if fused_def:
+                        definition_text = fused_def.strip()
+                        gov = cache_entry.get("government")
+                        asp = cache_entry.get("aspect")
+                        notes = []
+                        if gov and gov not in ("null", "None"):
+                            notes.append(f"【接格】{gov}")
+                        if asp and asp not in ("null", "None"):
+                            notes.append(f"【体】{asp}")
+                        if notes:
+                            definition_text = " / ".join(notes) + "\n" + definition_text
+                        
+                        source = "AI-Fused"
+                        confidence = 3
+                        llm_fused_count += 1
+                
+                if source == "BKRS" and definition_text:
+                    bkrs_count += 1
 
             # 插入 definitions
             if definition_text and definition_text.strip():
