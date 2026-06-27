@@ -63,7 +63,7 @@ def load_index(path, name):
     return idx
 
 def source_priority(source):
-    order = {"BKRS-embedded": 0, "News": 1, "Tatoeba": 2, "Kaikki": 3}
+    order = {"BKRS-embedded": 0, "News": 1, "Tatoeba": 2, "Kaikki": 3, "AI-Generated": 4}
     return order.get(source, 99)
 
 def main():
@@ -74,7 +74,10 @@ def main():
     # Load indexes
     news_index = load_index(os.path.join(OUTPUT_DIR, "news_index.json"), "News")
     tatoeba_index = load_index(os.path.join(OUTPUT_DIR, "tatoeba_index.json"), "Tatoeba")
-
+    
+    # 加载DeepSeek生成例句
+    deepseek_index = load_index(os.path.join(OUTPUT_DIR, "deepseek_examples.json"), "AI-Generated")
+    
     entries = []
     with open(FUSED_JSONL, "r", encoding="utf-8") as f:
         for line in f:
@@ -91,6 +94,7 @@ def main():
     bullet_phrases_added = 0
     news_examples_added = 0
     tatoeba_examples_added = 0
+    deepseek_examples_added = 0
 
     for entry in entries:
         lemma = entry.get("lemma", "")
@@ -119,7 +123,7 @@ def main():
                         "source": "News"
                     })
 
-        # Step 3: Get Tatoeba examples
+        # Step 3: Get Tatoeba examples (filter English-only zh)
         tatoeba_examples_for_lemma = []
         if lemma in tatoeba_index:
             for item in tatoeba_index[lemma]:
@@ -127,18 +131,44 @@ def main():
                     ru_text = item[0]
                     zh_text = item[1]
                     if ru_text and zh_text:
+                        # Filter: if zh contains English letters but no Cyrillic, discard
+                        if re.search(r'[a-zA-Z]', zh_text) and not re.search(r'[а-яё]', zh_text):
+                            continue
                         tatoeba_examples_for_lemma.append({
                             "ru": strip_stress(ru_text),
                             "zh": strip_stress(zh_text),
                             "source": "Tatoeba"
                         })
 
-        # Step 4: Process existing examples (strip stress)
+        # Step 3b: Get DeepSeek-generated examples
+        deepseek_examples_for_lemma = []
+        if lemma in deepseek_index:
+            for item in deepseek_index[lemma]:
+                if isinstance(item, dict):
+                    ru_text = item.get('ru', '')
+                    zh_text = item.get('zh', '')
+                elif isinstance(item, list) and len(item) >= 3:
+                    ru_text = item[0]
+                    zh_text = item[1]
+                else:
+                    continue
+                if ru_text and zh_text and 10 < len(ru_text) < 150:
+                    deepseek_examples_for_lemma.append({
+                        "ru": strip_stress(ru_text),
+                        "zh": strip_stress(zh_text),
+                        "source": "AI-Generated"
+                    })
+
+        # Step 4: Process existing examples (strip stress, filter English-only zh)
         existing_examples = []
         for ex in examples:
+            zh_text = strip_stress(ex.get("zh", ""))
+            # Filter: if sentence_zh contains English letters but no Cyrillic, discard
+            if re.search(r'[a-zA-Z]', zh_text) and not re.search(r'[а-яё]', zh_text):
+                continue
             existing_examples.append({
                 "ru": strip_stress(ex.get("ru", "")),
-                "zh": strip_stress(ex.get("zh", "")),
+                "zh": zh_text,
                 "source": ex.get("source", "unknown")
             })
 
@@ -217,6 +247,19 @@ def main():
                 seen.add(key)
                 merged.append(ex)
 
+        # 5g: DeepSeek-generated examples (fill up to 8)
+        need = 8 - len(merged)
+        if need > 0:
+            for ex in deepseek_examples_for_lemma[:need]:
+                ru = ex["ru"]
+                if not ru:
+                    continue
+                key = ru[:100]
+                if key not in seen:
+                    seen.add(key)
+                    merged.append(ex)
+                    deepseek_examples_added += 1
+
         # Step 6: Sort by source priority, then by length
         merged.sort(key=lambda x: (source_priority(x["source"]), len(x["ru"])))
 
@@ -246,6 +289,7 @@ def main():
     print(f"\n  Bullet phrases extracted: {bullet_phrases_added}")
     print(f"  News examples added: {news_examples_added}")
     print(f"  Tatoeba examples added: {tatoeba_examples_added}")
+    print(f"  DeepSeek examples added: {deepseek_examples_added}")
     print(f"\n  Output: {FUSED_JSONL}")
     print("=" * 60)
 
