@@ -23,24 +23,16 @@ val appModule = module {
             override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                 super.onOpen(db)
                 try {
-                    db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS `words_fts` USING fts5(lemma, lemma_stressed, content='words', content_rowid='id')")
-                    db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS `definitions_fts` USING fts5(definition, content='definitions', content_rowid='id')")
-                    val wordsCount = db.query("SELECT COUNT(*) FROM words_fts").use {
-                        it.moveToFirst(); it.getInt(0)
-                    }
-                    if (wordsCount == 0) {
-                        android.util.Log.i("ParusDB", "FTS5 words_fts 为空，开始填充 25万行...")
-                        db.execSQL("INSERT INTO words_fts(rowid, lemma, lemma_stressed) SELECT id, lemma, lemma_stressed FROM words")
-                        android.util.Log.i("ParusDB", "words_fts 填充完成")
-                    }
-                    val defsCount = db.query("SELECT COUNT(*) FROM definitions_fts").use {
-                        it.moveToFirst(); it.getInt(0)
-                    }
-                    if (defsCount == 0) {
-                        android.util.Log.i("ParusDB", "FTS5 definitions_fts 为空，开始填充 25万行...")
-                        db.execSQL("INSERT INTO definitions_fts(rowid, definition) SELECT id, definition FROM definitions")
-                        android.util.Log.i("ParusDB", "definitions_fts 填充完成")
-                    }
+                    // 重建 FTS5 索引（确保与DB数据一致）
+                    // 使用 unicode61 tokenizer，关闭变音符号移除，避免 й→и 归一化
+                    db.execSQL("DROP TABLE IF EXISTS `words_fts`")
+                    db.execSQL("CREATE VIRTUAL TABLE `words_fts` USING fts5(lemma, lemma_stressed, content='words', content_rowid='id', tokenize='unicode61 remove_diacritics 0')")
+                    db.execSQL("INSERT INTO words_fts(rowid, lemma, lemma_stressed) SELECT id, lemma, lemma_stressed FROM words")
+                    android.util.Log.i("ParusDB", "words_fts 重建完成")
+                    db.execSQL("DROP TABLE IF EXISTS `definitions_fts`")
+                    db.execSQL("CREATE VIRTUAL TABLE `definitions_fts` USING fts5(definition, content='definitions', content_rowid='id', tokenize='unicode61 remove_diacritics 0')")
+                    db.execSQL("INSERT INTO definitions_fts(rowid, definition) SELECT id, definition FROM definitions")
+                    android.util.Log.i("ParusDB", "definitions_fts 重建完成")
                 } catch (e: Exception) {
                     android.util.Log.e("ParusDB", "FTS5 初始化失败，将使用 LIKE 降级搜索", e)
                 }

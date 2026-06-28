@@ -136,13 +136,15 @@ def build_database():
     CREATE VIRTUAL TABLE IF NOT EXISTS `words_fts` USING fts5(
         lemma, lemma_stressed,
         content='words',
-        content_rowid='id'
+        content_rowid='id',
+        tokenize='unicode61 remove_diacritics 0'
     );""")
     conn.execute("""
     CREATE VIRTUAL TABLE IF NOT EXISTS `definitions_fts` USING fts5(
         definition,
         content='definitions',
-        content_rowid='id'
+        content_rowid='id',
+        tokenize='unicode61 remove_diacritics 0'
     );""")
 
     # 6. 数据统计与插入
