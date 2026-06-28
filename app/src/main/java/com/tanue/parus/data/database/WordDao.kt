@@ -17,7 +17,7 @@ interface WordDao {
         WHERE w.id IN (
             SELECT rowid FROM words_fts WHERE words_fts MATCH :queryMatch
             UNION
-            SELECT word_id FROM inflections WHERE form = :queryClean
+            SELECT word_id FROM inflections WHERE form_normalized = :queryClean
         )
         ORDER BY
             CASE
@@ -73,7 +73,7 @@ interface WordDao {
         SELECT w.* FROM words w
         WHERE w.lemma = :queryClean
            OR w.lemma LIKE :queryLike
-           OR w.id IN (SELECT word_id FROM inflections WHERE form = :queryClean)
+           OR w.id IN (SELECT word_id FROM inflections WHERE form_normalized = :queryClean)
         ORDER BY
             CASE
                 WHEN w.lemma = :queryClean THEN 1
