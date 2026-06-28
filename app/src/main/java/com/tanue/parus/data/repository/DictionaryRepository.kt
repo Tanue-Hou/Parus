@@ -8,7 +8,7 @@ import kotlinx.coroutines.withContext
 
 class DictionaryRepository(private val wordDao: WordDao) {
     suspend fun search(query: String): List<WordWithDetails> = withContext(Dispatchers.IO) {
-        val queryClean = query.trim().lowercase()
+        val queryClean = normalizeQuery(query)
         if (queryClean.isEmpty()) return@withContext emptyList()
 
         val isRussian = queryClean.any { it in '\u0400'..'\u04FF' }
@@ -44,5 +44,13 @@ class DictionaryRepository(private val wordDao: WordDao) {
                 emptyList()
             }
         }
+    }
+
+    private fun normalizeQuery(query: String): String {
+        return query.trim().lowercase()
+            .replace("\u0301", "") // COMBINING ACUTE ACCENT
+            .replace("\u0300", "") // COMBINING GRAVE ACCENT
+            .replace("'", "")
+            .replace("`", "")
     }
 }
