@@ -465,6 +465,13 @@ def build_database():
     conn.commit()
     conn.close()
 
+    # 运行合规性校正过滤器，清理敏感释义与例句
+    try:
+        from compliance_fix import apply_compliance_fixes
+        apply_compliance_fixes(NEW_DB_PATH)
+    except Exception as e:
+        print(f"  [WARN] Failed to apply compliance fixes: {e}")
+
     elapsed = time.time() - start_time
 
     # ============================================================
