@@ -190,6 +190,8 @@ def build_database():
 
             lemma = entry.get("lemma", "")
             lemma_stressed = entry.get("lemma_stressed", lemma)
+            # P1-2: lemma_stressed重音统一
+            lemma_stressed = re.sub(r"'(?=[а-яё])", "\u0301", lemma_stressed)
             pos = entry.get("pos")
             # 中文词性→英文标准标签
             POS_MAP = {
@@ -305,6 +307,19 @@ def build_database():
                 definition_text = html.unescape(definition_text)
                 definition_text = re.sub(r'<[^>]+>', '', definition_text)
                 definition_text = re.sub(r'\s+', ' ', definition_text).strip()
+                
+                # 英文释义处理：保留词性标签，清理非词性英文
+                # 词性标签白名单（短英文词）
+                POS_TAGS = {"adj", "adv", "noun", "verb", "intj", "conj", "prep", "pron", "num", "part", "det", "phrase", "proverb", "prefix", "suffix", "particle", "name"}
+                if source == "BKRS" and re.search(r'[a-zA-Z]', definition_text) and not re.search(r'[а-яё]', definition_text):
+                    # 纯英文释义：检查是否是词性标签
+                    text_stripped = definition_text.strip().lower()
+                    if text_stripped in POS_TAGS:
+                        # 是词性标签，保留
+                        pass
+                    else:
+                        # 非词性英文释义，标记为低信度
+                        confidence = min(confidence, 1)
                 
                 # P2-4: 极短释义/参见释义降权
                 short_def = len(definition_text) < 4 or definition_text.startswith('см.') or 'см.' in definition_text[:10]

@@ -27,7 +27,7 @@ OUTPUT = '/mnt/d/Android/Parus/pipeline/output/ai_translated.json'
 FUSED_JSONL = '/mnt/d/Android/Parus/pipeline/output/fused.jsonl'
 BATCH_SIZE = 100
 MAX_WORKERS = 10
-MAX_LEMMAS = 20000  # 先跑前2万
+MAX_LEMMAS = 50000  # 先翻到5万条
 
 def get_kaikki_only_words():
     """从fused.jsonl提取Kaikki-only词条（有英文释义无中文）"""
