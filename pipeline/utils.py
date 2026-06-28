@@ -7,13 +7,35 @@ import unicodedata
 
 
 def clean_stress(text):
-    """去除重音符号并小写"""
+    """去除重音符号并小写。
+    
+    注意：不能用 NFD 分解再过滤 Mn 类字符，因为西里尔字母 й = и + COMBINING BREVE (Mn)，
+    那样会把所有 й 变成 и，导致красивый→красивыи，词条全部错乱。
+    
+    正确做法：只精确去掉 U+0301 (COMBINING ACUTE ACCENT) 和 ASCII 重音替代符号。
+    """
     if not text:
         return ""
+    # 只去掉真正的重音标记，不做 NFD 全量分解
+    text = text.replace('\u0301', '')   # COMBINING ACUTE ACCENT (常见重音)
+    text = text.replace('\u0300', '')   # COMBINING GRAVE ACCENT
+    text = text.replace('\u0302', '')   # COMBINING CIRCUMFLEX
+    text = text.replace('\u0308', '')   # COMBINING DIAERESIS (用于ё时不应去，但保险起见)
+    text = text.replace('`', '')        # ASCII backtick 重音替代
+    text = text.replace("'", '')        # ASCII 单引号重音替代（如 вода'）
+    return text.lower().strip()
+
+
+def normalize_russian(text):
+    if not text:
+        return ""
+    # 去除 Unicode 组合重音符 (\u0301, \u0300) 以及 ASCII 形式的重音符
     text = text.replace('\u0301', '')
-    normalized = unicodedata.normalize('NFD', text)
-    cleaned = "".join(c for c in normalized if unicodedata.category(c) != 'Mn')
-    return cleaned.lower().strip()
+    text = text.replace('\u0300', '')
+    text = text.replace("'", "")
+    text = text.replace("`", "")
+    return text.lower().strip()
+
 
 
 def clean_dsl_text(text):

@@ -17,7 +17,7 @@ import re
 # 添加项目根到 path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pipeline import config
-from pipeline.utils import get_difficulty_level
+from pipeline.utils import get_difficulty_level, normalize_russian
 
 # ============================================================
 # 工具函数
@@ -127,25 +127,23 @@ def build_database():
     print("  Creating Room core tables and inserting Master Hash...")
     conn.execute("PRAGMA foreign_keys = OFF;")
     for ddl in ddl_statements:
-        conn.execute(ddl)
+        if "`inflections`" in ddl and "CREATE TABLE" in ddl:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS `inflections` (
+                    `id` INTEGER NOT NULL,
+                    `word_id` INTEGER NOT NULL,
+                    `form` TEXT NOT NULL,
+                    `form_normalized` TEXT NOT NULL,
+                    `grammar_tag` TEXT,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`word_id`) REFERENCES `words`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS `index_inflections_form_normalized` ON `inflections` (`form_normalized`)")
+        else:
+            conn.execute(ddl)
     conn.execute("PRAGMA foreign_keys = ON;")
 
-    # 5. 创建 FTS5 虚拟表 (content-sync 模式)
-    print("  Creating FTS5 virtual tables...")
-    conn.execute("""
-    CREATE VIRTUAL TABLE IF NOT EXISTS `words_fts` USING fts5(
-        lemma, lemma_stressed,
-        content='words',
-        content_rowid='id',
-        tokenize='unicode61 remove_diacritics 0'
-    );""")
-    conn.execute("""
-    CREATE VIRTUAL TABLE IF NOT EXISTS `definitions_fts` USING fts5(
-        definition,
-        content='definitions',
-        content_rowid='id',
-        tokenize='unicode61 remove_diacritics 0'
-    );""")
 
     # 6. 数据统计与插入
     total_lines = 0
@@ -358,11 +356,13 @@ def build_database():
                     seen_infl.add(dedup_key)
                     # P1-2: 统一重音格式：ASCII单引号 → Unicode组合重音
                     form = re.sub(r"'(?=[а-яё])", "\u0301", form)
+                    form_normalized = normalize_russian(form)
                     inflections_batch.append((
                         infl_id_counter,
                         word_id,
                         form,
-                        grammar_tag,
+                        form_normalized,
+                        grammar_tag or "",
                     ))
                     infl_id_counter += 1
                     infl_count += 1
@@ -444,10 +444,16 @@ def build_database():
     populated = conn.execute("SELECT COUNT(*) FROM words WHERE frequency > 0").fetchone()[0]
     print(f"  [OK] frequency populated for {populated} words")
 
-    # 8. 重建 FTS5 索引
-    print("  Rebuilding FTS5 indexes...")
-    conn.execute("INSERT INTO words_fts(words_fts) VALUES('rebuild');")
-    conn.execute("INSERT INTO definitions_fts(definitions_fts) VALUES('rebuild');")
+    # 8. 离线构建 FTS5 虚拟表并填充数据
+    print("离线构建 FTS5 虚拟表中...")
+    conn.execute("DROP TABLE IF EXISTS `words_fts`")
+    conn.execute("CREATE VIRTUAL TABLE `words_fts` USING fts5(lemma, lemma_stressed, content='words', content_rowid='id', tokenize='unicode61 remove_diacritics 0')")
+    conn.execute("INSERT INTO words_fts(rowid, lemma, lemma_stressed) SELECT id, lemma, lemma_stressed FROM words")
+    
+    conn.execute("DROP TABLE IF EXISTS `definitions_fts`")
+    conn.execute("CREATE VIRTUAL TABLE `definitions_fts` USING fts5(definition, content='definitions', content_rowid='id', tokenize='unicode61 remove_diacritics 0')")
+    conn.execute("INSERT INTO definitions_fts(rowid, definition) SELECT id, definition FROM definitions")
+    print("离线 FTS5 表构建完成")
 
     print("  Running ANALYZE...")
     conn.execute("ANALYZE;")
@@ -514,8 +520,8 @@ def _flush_batch(conn, words_batch, defs_batch, inflections_batch,
             )
         if inflections_batch:
             conn.executemany(
-                "INSERT INTO inflections (id, word_id, form, grammar_tag) "
-                "VALUES (?, ?, ?, ?)",
+                "INSERT INTO inflections (id, word_id, form, form_normalized, grammar_tag) "
+                "VALUES (?, ?, ?, ?, ?)",
                 inflections_batch,
             )
         if examples_batch:
