@@ -1,6 +1,7 @@
 package com.tanue.parus.data.repository
 
 import android.util.Log
+import java.text.Normalizer
 import com.tanue.parus.data.database.WordDao
 import com.tanue.parus.data.model.WordWithDetails
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +48,8 @@ class DictionaryRepository(private val wordDao: WordDao) {
     }
 
     private fun normalizeQuery(query: String): String {
-        return query.trim().lowercase()
+        val nfc = Normalizer.normalize(query, Normalizer.Form.NFC)
+        return nfc.trim().lowercase()
             .replace("\u0301", "") // COMBINING ACUTE ACCENT
             .replace("\u0300", "") // COMBINING GRAVE ACCENT
             .replace("'", "")

@@ -16,6 +16,8 @@ def clean_stress(text):
     """
     if not text:
         return ""
+    import unicodedata
+    text = unicodedata.normalize('NFC', text)
     # 只去掉真正的重音标记，不做 NFD 全量分解
     text = text.replace('\u0301', '')   # COMBINING ACUTE ACCENT (常见重音)
     text = text.replace('\u0300', '')   # COMBINING GRAVE ACCENT
@@ -29,6 +31,8 @@ def clean_stress(text):
 def normalize_russian(text):
     if not text:
         return ""
+    import unicodedata
+    text = unicodedata.normalize('NFC', text)
     # 去除 Unicode 组合重音符 (\u0301, \u0300) 以及 ASCII 形式的重音符
     text = text.replace('\u0301', '')
     text = text.replace('\u0300', '')

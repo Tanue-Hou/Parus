@@ -458,9 +458,9 @@ def build_database():
     print("  Running ANALYZE...")
     conn.execute("ANALYZE;")
 
-    # 设置 Room 数据库版本号 (必须匹配 @Database(version = 2))
-    print("  Setting PRAGMA user_version = 2")
-    conn.execute("PRAGMA user_version = 2;")
+    # 设置 Room 数据库版本号 (必须匹配 @Database(version = 3))
+    print("  Setting PRAGMA user_version = 3")
+    conn.execute("PRAGMA user_version = 3;")
 
     conn.commit()
     conn.close()

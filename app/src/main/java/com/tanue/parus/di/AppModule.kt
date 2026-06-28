@@ -17,7 +17,6 @@ val appModule = module {
             "dict.db"
         )
         .createFromAsset("database/dict_v2.db")
-        .addMigrations(AppDatabase.MIGRATION_1_2)
         .fallbackToDestructiveMigration()
         .addCallback(object : androidx.room.RoomDatabase.Callback() {
             override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {

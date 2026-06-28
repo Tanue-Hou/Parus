@@ -10,7 +10,6 @@ import androidx.room.PrimaryKey
     tableName = "inflections",
     indices = [
         Index(value = ["word_id"]),
-        Index(value = ["form"]),
         Index(value = ["form_normalized"])
     ],
     foreignKeys = [
