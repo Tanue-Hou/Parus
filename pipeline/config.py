@@ -47,7 +47,7 @@ INTERMEDIATE_JSONL = os.path.join(OUTPUT_DIR, "intermediate.jsonl")
 FUSED_JSONL = os.path.join(OUTPUT_DIR, "fused.jsonl")
 
 # LLM 缓存：存放在项目根目录下，方便断点续传与融合脚本读取
-LLM_CACHE_JSON = os.path.join(PROJECT_ROOT, "llm_cache.json")
+LLM_CACHE_JSON = os.path.join(PROJECT_ROOT, "pipeline", "output", "llm_cache.json")
 
 # Phase 3 产出
 NEW_DB_PATH = os.path.join(PROJECT_ROOT, "app", "src", "main", "assets", "database", "dict_v2.db")
